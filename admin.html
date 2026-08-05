@@ -2,7 +2,6 @@
 <html lang="hi">
 <head>
 <meta charset="UTF-8">
-<!-- Mobile Keyboard Fix -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content, viewport-fit=cover">
 <title>Live Support | Admin Dashboard</title>
 <!-- PWA Manifest Link -->
@@ -229,7 +228,7 @@
                     <button class="action-icon-btn" id="adminAttachBtn" title="Send Gallery Media/File"><i class="fas fa-paperclip"></i></button>
                     <input type="file" id="adminFileInput" accept="image/*,video/*,audio/*" style="display: none;">
                     <input type="text" id="adminMsgInput" placeholder="Type a message..." autocomplete="off">
-                    <!-- 🆕 KEYBOARD FIX -->
+                    <!-- FIX: Send button now maintains focus -->
                     <button class="send-btn" id="adminSendBtn"><i class="fas fa-paper-plane"></i></button>
                 </div>
             </div>
@@ -269,15 +268,21 @@
     let currentKey = null;
     let typingTimer;
     let isSending = false;
-    let currentMessagesRef = null;
-    let currentStatusRef = null;
-    let replyingToData = null;
     const ADMIN_PASSWORD = "Ankush@2026";
-    
+
+    // 🆕 GHOST LISTENER FIX: Track unsubscription functions
+    let unsubMessages = null;
+    let unsubStatus = null;
+    let unsubCalls = null;
+    let replyingToData = null;
+
+    let isAppVisible = true;
+
     // --- 🆕 VISIBILITY LISTENER (LAST SEEN SUPPORT) ---
     document.addEventListener('visibilitychange', () => {
+        isAppVisible = !document.hidden;
         if(currentKey) {
-            if (document.hidden) {
+            if (!isAppVisible) {
                 update(ref(db, 'support_keys/' + currentKey), { admin_status: 'offline', admin_typing: false, admin_last_seen: serverTimestamp() });
             } else {
                 update(ref(db, 'support_keys/' + currentKey), { admin_status: 'online' });
@@ -367,8 +372,7 @@
     // --- WEBRTC CALLING VARIABLES ---
     let localStream;
     let peerConnection;
-    let callStateRef = null;
-    let iceCandidatesRef = null;
+    let unsubIce = null;
     let callTimerInterval;
     let callSeconds = 0;
     
@@ -493,7 +497,8 @@
 
             await set(ref(db, `calls/${currentKey}`), callConfig);
 
-            onValue(ref(db, `calls/${currentKey}`), async (snapshot) => {
+            if(unsubCalls) { unsubCalls(); unsubCalls = null; }
+            unsubCalls = onValue(ref(db, `calls/${currentKey}`), async (snapshot) => {
                 const data = snapshot.val();
                 if (!data) return;
 
@@ -508,8 +513,8 @@
                 }
             });
 
-            iceCandidatesRef = ref(db, `calls/${currentKey}/iceCandidates/student`);
-            onValue(iceCandidatesRef, snapshot => {
+            if(unsubIce) { unsubIce(); unsubIce = null; }
+            unsubIce = onValue(ref(db, `calls/${currentKey}/iceCandidates/student`), snapshot => {
                 snapshot.forEach(childSnapshot => {
                     const candidate = new RTCIceCandidate(childSnapshot.val());
                     if(peerConnection) peerConnection.addIceCandidate(candidate);
@@ -544,7 +549,7 @@
             };
 
             peerConnection.onicecandidate = event => {
-                if (event.candidate) { push(ref(db, `calls/${currentKey}/iceCandidates/student`), event.candidate.toJSON()); }
+                if (event.candidate) { push(ref(db, `calls/${currentKey}/iceCandidates/admin`), event.candidate.toJSON()); }
             };
 
             const offerDescription = new RTCSessionDescription(offerData);
@@ -569,8 +574,8 @@
             if(isVideoCall) document.getElementById("videoToggleBtn").style.display = "inline-block";
             startCallTimer();
 
-            iceCandidatesRef = ref(db, `calls/${currentKey}/iceCandidates/student`);
-            onValue(iceCandidatesRef, snapshot => {
+            if(unsubIce) { unsubIce(); unsubIce = null; }
+            unsubIce = onValue(ref(db, `calls/${currentKey}/iceCandidates/student`), snapshot => {
                 snapshot.forEach(childSnapshot => {
                     const candidate = new RTCIceCandidate(childSnapshot.val());
                     if(peerConnection) peerConnection.addIceCandidate(candidate);
@@ -607,13 +612,13 @@
 
     // --- CLEAN CLOSING FUNCTIONS ---
     function closeAdminChatUI() {
-        // 🆕 LAST SEEN ON CLOSE
         if(currentKey) { update(ref(db, 'support_keys/' + currentKey), { admin_status: 'offline', admin_typing: false, admin_last_seen: serverTimestamp() }); }
         currentKey = null;
         
-        if(currentMessagesRef) { off(currentMessagesRef); currentMessagesRef = null; }
-        if(currentStatusRef) { off(currentStatusRef); currentStatusRef = null; }
-        if(callStateRef) { off(callStateRef); callStateRef = null; }
+        // 🆕 Ghost Listener Fix using Unsubscribe
+        if(unsubMessages) { unsubMessages(); unsubMessages = null; }
+        if(unsubStatus) { unsubStatus(); unsubStatus = null; }
+        if(unsubCalls) { unsubCalls(); unsubCalls = null; }
 
         document.getElementById("mainChatArea").classList.remove("active-mobile");
         document.getElementById("chatTitleText").innerHTML = `<span><i class="fas fa-comments"></i> Select a key</span>`;
@@ -651,7 +656,7 @@
 
         if (peerConnection) { peerConnection.close(); peerConnection = null; }
         if (localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; }
-        if (iceCandidatesRef) { off(iceCandidatesRef); }
+        if (unsubIce) { unsubIce(); unsubIce = null; }
 
         document.getElementById("remoteVideoCall").srcObject = null;
         document.getElementById("localVideo").srcObject = null;
@@ -774,7 +779,7 @@
     }
 
     function openChat(key) {
-        if(currentKey) { update(ref(db, 'support_keys/' + currentKey), { admin_status: 'offline', admin_typing: false }); }
+        if(currentKey) { update(ref(db, 'support_keys/' + currentKey), { admin_status: 'offline', admin_typing: false, admin_last_seen: serverTimestamp() }); }
 
         currentKey = key;
         document.getElementById("chatTitleText").innerHTML = `<span><i class="fas fa-hashtag"></i> Key: ${key}</span>`;
@@ -796,18 +801,15 @@
         const myKeyRef = ref(db, 'support_keys/' + currentKey);
         update(myKeyRef, { admin_status: 'online' });
         
-        // 🆕 LAST SEEN ON DISCONNECT
         onDisconnect(myKeyRef).update({ admin_status: 'offline', admin_typing: false, admin_last_seen: serverTimestamp() });
 
-        if(currentMessagesRef) off(currentMessagesRef);
-        currentMessagesRef = ref(db, 'messages/' + key);
-        
-        if(currentStatusRef) off(currentStatusRef);
-        currentStatusRef = ref(db, 'support_keys/' + key);
+        // CLEAN PREVIOUS LISTENERS
+        if(unsubMessages) { unsubMessages(); unsubMessages = null; }
+        if(unsubStatus) { unsubStatus(); unsubStatus = null; }
+        if(unsubCalls) { unsubCalls(); unsubCalls = null; }
 
-        if(callStateRef) off(callStateRef);
-        callStateRef = ref(db, `calls/${key}`);
-        onValue(callStateRef, (snapshot) => {
+        // LISTEN FOR CALLS
+        unsubCalls = onValue(ref(db, `calls/${key}`), (snapshot) => {
             const data = snapshot.val();
             let overlayVisible = document.getElementById("callOverlay").style.display === "flex";
 
@@ -832,7 +834,8 @@
             }
         });
 
-        onValue(currentMessagesRef, (snapshot) => {
+        // LISTEN FOR MESSAGES
+        unsubMessages = onValue(ref(db, `messages/${key}`), (snapshot) => {
             const msgs = snapshot.val();
             let newHtmlString = ""; 
             if(msgs) {
@@ -847,7 +850,8 @@
                     let m = msgs[msgId];
                     if (now - m.timestamp > twelveHoursInMs) { updatesToPerform[msgId] = null; hasDeletes = true; return; }
                     
-                    if(m.sender === 'student' && m.status !== 'read' && isChatOpen) { 
+                    // 🆕 GHOST LISTENER FIX: Sirf tab Read mark karo jab panel open ho aur app samne ho
+                    if(m.sender === 'student' && m.status !== 'read' && isChatOpen && isAppVisible) { 
                         update(ref(db, `messages/${key}/${msgId}`), { status: 'read' }); 
                     }
 
@@ -878,8 +882,8 @@
             } else { msgBox.innerHTML = `<div class="empty-chat"><i class="fas fa-inbox"></i><p>Yahan abhi koi message nahi hai.</p></div>`; }
         });
 
-        // 🆕 LAST SEEN DISPLAY LOGIC
-        onValue(currentStatusRef, (snapshot) => {
+        // LISTEN FOR STATUS
+        unsubStatus = onValue(ref(db, `support_keys/${key}`), (snapshot) => {
             const data = snapshot.val();
             if(data) {
                 if(data.student_typing) { statusBox.innerHTML = `<span class="status-typing">Typing... ✍️</span>`; } 
