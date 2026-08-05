@@ -179,7 +179,6 @@
 
         /* ========= LIVE SUPPORT WIDGET ========= */
         .livesupport-fab {
-            /* HIDDEN PERMANENTLY AS REQUESTED */
             display: none !important; 
         }
         .livesupport-panel {
@@ -204,18 +203,10 @@
 
         .ls-panel-body { padding: 18px 16px; display: flex; flex-direction: column; gap: 12px; }
         
-        /* 🆕 MOBILE UI GAP FIX */
         @media (max-width: 480px) {
-            .livesupport-panel { 
-                right: 15px; 
-                left: 15px; 
-                bottom: 20px; 
-                width: auto; 
-                max-width: none; 
-            }
+            .livesupport-panel { right: 15px; left: 15px; bottom: 20px; width: auto; max-width: none; }
         }
 
-        /* Message Bubble & Control Styles */
         .chat-bubble { max-width: 85%; padding: 8px 12px; border-radius: 12px; font-size: 0.9rem; line-height: 1.3; position: relative; word-wrap: break-word;}
         .chat-bubble.admin { background: #334155; color: white; align-self: flex-start; border-bottom-left-radius: 0; }
         .chat-bubble.student { background: #075E54; color: white; align-self: flex-end; border-bottom-right-radius: 0; }
@@ -228,32 +219,22 @@
         .msg-btn.reply:hover { color: #34b7f1; }
         .msg-btn.delete:hover { color: #ef4444; }
 
-        /* Reply Block inside bubble */
         .replied-msg-box { background: rgba(0,0,0,0.25); border-left: 4px solid #25D366; padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; font-size: 0.8rem; color: #cbd5e1; cursor: pointer; }
         .replied-msg-box strong { color: #25D366; display: block; margin-bottom: 2px;}
 
-        /* Input section with Reply Preview */
         #replyPreviewBox { display: none; background: #334155; padding: 10px 15px; border-left: 4px solid #34b7f1; font-size: 0.85rem; color: #cbd5e1; position: relative; border-bottom: 1px solid #1e293b;}
         #replyPreviewName { font-weight: bold; color: #34b7f1; margin-bottom: 3px; }
         #replyPreviewText { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 20px; }
         .cancel-reply-btn { position: absolute; right: 15px; top: 15px; cursor: pointer; color: #ef4444; font-size: 1.1rem; transition: 0.2s; }
         .cancel-reply-btn:hover { transform: scale(1.1); }
 
-        /* Media Image/Video Styles for Chat */
         .chat-media-img { max-width: 100%; max-height: 200px; border-radius: 8px; margin-top: 5px; cursor: pointer; object-fit: contain; background: #0f172a;}
         .chat-media-video { max-width: 100%; max-height: 200px; border-radius: 8px; margin-top: 5px; background: #000; }
         .chat-media-audio { max-width: 200px; margin-top: 5px; outline: none; }
 
-        /* Emoji Picker Styles (Student) */
         .ls-emoji-btn { background: none; border: none; color: #94a3b8; font-size: 1.5rem; cursor: pointer; transition: 0.2s; padding-right: 5px; }
         .ls-emoji-btn:hover { color: #ffd966; }
-        .ls-emoji-picker { 
-            display: none; position: absolute; bottom: 100px; left: 10px; right: 10px;
-            background: #1e293b; border: 1px solid #334155; border-radius: 8px; 
-            padding: 10px; max-height: 180px; overflow-y: auto; 
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 1000; 
-            grid-template-columns: repeat(7, 1fr); gap: 5px; 
-        }
+        .ls-emoji-picker { display: none; position: absolute; bottom: 100px; left: 10px; right: 10px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 10px; max-height: 180px; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 1000; grid-template-columns: repeat(7, 1fr); gap: 5px; }
         .ls-emoji-picker.active { display: grid; }
         .ls-emoji-picker span { cursor: pointer; font-size: 1.4rem; text-align: center; padding: 5px; transition: 0.2s; border-radius: 5px; }
         .ls-emoji-picker span:hover { background: #334155; }
@@ -302,7 +283,7 @@
             <p>लाइव ऑनलाइन डेटाबेस · ऐप स्टाइल लेआउट</p>
         </div>
         <div class="header-actions">
-            <!-- 🆕 TOOLTIP REMOVED -->
+            <!-- 🆕 TOOLTIP REMOVED COMPLETELY -->
             <div id="secretSupportBtn" style="font-size: 1.8rem; cursor: pointer; user-select: none;">👨‍💻</div>
             
             <div class="notif-bell" id="bellIconBtn" onclick="openNotifications()">
@@ -368,7 +349,7 @@
                     <option value="video">वीडियो (YouTube / Play)</option>
                     <option value="image">इमेज (Photo / Screenshot)</option>
                     <option value="test">ऑनलाइन टेस्ट (Quiz)</option>
-                    <option value="link">अन्य लिंक (Website)</option>
+                    <option value="link">अन्य লিংক (Website)</option>
                     <option value="book">किताब (Book)</option>
                 </select>
             </div>
@@ -500,7 +481,7 @@
     </div>
 </div>
 
-<div class="livesupport-fab" id="lsFabBtn">
+<div class="livesupport-fab" id="lsFabBtn" title="Live Support">
     <i class="fas fa-headset"></i>
 </div>
 
@@ -1638,18 +1619,15 @@
         }
     }
 
-    // --- 🆕 CLEAN CLOSING FUNCTIONS ---
-    function closeStudentChatUI() {
-        document.getElementById("lsCloseBtn").click();
-    }
-
     document.getElementById("endCallBtn").addEventListener("click", () => {
         if(activeSessionKey) remove(ref(db, `calls/${activeSessionKey}`));
         endCallLocal();
-        closeStudentChatUI(); // Manual cut hone par chat window bhi band hogi
     });
 
     function endCallLocal() {
+        // 🆕 NEW FIX: Only act as a call end if we were actually IN a call.
+        let wasInCall = (peerConnection !== null);
+
         document.getElementById("callOverlay").style.display = "none";
         document.getElementById("muteCallBtn").style.display = "none";
         document.getElementById("videoToggleBtn").style.display = "none";
@@ -1674,6 +1652,11 @@
         document.getElementById("localVideo").srcObject = null;
         document.getElementById("remoteAudio").volume = 1.0;
         document.getElementById("remoteVideoCall").volume = 1.0;
+        
+        // 🆕 CALL END HOTE HI CHAT BAND HO JAYEGI 
+        if (wasInCall) {
+            document.getElementById("lsCloseBtn").click();
+        }
     }
 
     function startCallTimer() {
@@ -1790,6 +1773,12 @@
             update(ref(db, 'support_keys/' + activeSessionKey), { student_status: 'offline', student_typing: false });
             activeSessionKey = null;
         }
+
+        // 🆕 Ghost Listener Fix
+        if(currentMessagesRef) { off(currentMessagesRef); currentMessagesRef = null; }
+        if(currentStatusRef) { off(currentStatusRef); currentStatusRef = null; }
+        if(callStateRef) { off(callStateRef); callStateRef = null; }
+
         document.getElementById("studentChatMessages").innerHTML = "";
         document.getElementById("studentKeyInput").value = ""; 
         document.getElementById("studentMsgInput").value = ""; 
@@ -1843,7 +1832,7 @@
         if(currentStatusRef) off(currentStatusRef);
         currentStatusRef = ref(db, 'support_keys/' + key);
 
-        // --- 🆕 FIXED BUG: Listen for Incoming Calls from Admin without auto-closing ---
+        // --- Listen for Incoming Calls from Admin ---
         if(callStateRef) off(callStateRef);
         callStateRef = ref(db, `calls/${key}`);
         onValue(callStateRef, (snapshot) => {
