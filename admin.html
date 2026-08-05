@@ -2,7 +2,7 @@
 <html lang="hi">
 <head>
 <meta charset="UTF-8">
-<!-- 🆕 Mobile Keyboard Fix: interactive-widget=resizes-content -->
+<!-- Mobile Keyboard Fix -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content, viewport-fit=cover">
 <title>Live Support | Admin Dashboard</title>
 <!-- PWA Manifest Link -->
@@ -11,7 +11,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
     * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
-    /* 🆕 Fixed Body structure */
     html, body { height: 100%; margin: 0; overflow: hidden; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; }
 
     /* ===== LOGIN SCREEN ===== */
@@ -49,7 +48,6 @@
     .chat-header-title { font-weight: bold; display: flex; align-items: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .chat-status-bar { font-size: 0.8rem; font-weight: 600; min-height: 15px; }
     
-    /* 🆕 MOBILE UI FIXES: FIXED HEADER & FULL SCREEN CHAT */
     #mobileBackBtn { display: none; cursor: pointer; margin-right: 12px; font-size: 1.3rem; color: #cbd5e1; padding: 5px;}
     
     @media (max-width: 768px) {
@@ -59,12 +57,12 @@
         .sidebar { width: 100%; height: 100%; border-radius: 0; border: none; }
         
         .chat-area { 
-            position: fixed; /* Freezes to screen entirely */
+            position: fixed; 
             top: 0; left: 0; bottom: 0; right: 0;
             width: 100%; height: 100%; 
             transform: translateX(100%); 
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
-            z-index: 9999; /* Covers dashboard header too for bigger keyboard space */
+            z-index: 9999; 
             border-radius: 0; border: none;
         }
         .chat-header { border-radius: 0; }
@@ -231,6 +229,7 @@
                     <button class="action-icon-btn" id="adminAttachBtn" title="Send Gallery Media/File"><i class="fas fa-paperclip"></i></button>
                     <input type="file" id="adminFileInput" accept="image/*,video/*,audio/*" style="display: none;">
                     <input type="text" id="adminMsgInput" placeholder="Type a message..." autocomplete="off">
+                    <!-- 🆕 KEYBOARD FIX -->
                     <button class="send-btn" id="adminSendBtn"><i class="fas fa-paper-plane"></i></button>
                 </div>
             </div>
@@ -275,16 +274,34 @@
     let replyingToData = null;
     const ADMIN_PASSWORD = "Ankush@2026";
     
-    // --- 🆕 VISIBILITY LISTENER TO DROP STATUS TO OFFLINE WHEN MINIMIZED ---
+    // --- 🆕 VISIBILITY LISTENER (LAST SEEN SUPPORT) ---
     document.addEventListener('visibilitychange', () => {
         if(currentKey) {
             if (document.hidden) {
-                update(ref(db, 'support_keys/' + currentKey), { admin_status: 'offline', admin_typing: false });
+                update(ref(db, 'support_keys/' + currentKey), { admin_status: 'offline', admin_typing: false, admin_last_seen: serverTimestamp() });
             } else {
                 update(ref(db, 'support_keys/' + currentKey), { admin_status: 'online' });
             }
         }
     });
+
+    // --- 🆕 LAST SEEN FORMATTER FUNCTION ---
+    function formatLastSeen(ts) {
+        if (!ts) return "Offline";
+        let date = new Date(ts);
+        let now = new Date();
+        
+        let isToday = date.getDate() === now.getDate() && date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+        let yesterday = new Date();
+        yesterday.setDate(now.getDate() - 1);
+        let isYesterday = date.getDate() === yesterday.getDate() && date.getMonth() === yesterday.getMonth() && date.getFullYear() === yesterday.getFullYear();
+        
+        let timeStr = date.toLocaleTimeString('en-IN', {hour: '2-digit', minute:'2-digit'});
+        
+        if (isToday) return `Today at ${timeStr}`;
+        if (isYesterday) return `Yesterday at ${timeStr}`;
+        return `${date.getDate()}/${date.getMonth()+1}/${date.getFullYear().toString().slice(-2)} at ${timeStr}`;
+    }
 
     // --- MOBILE UI LOGIC ---
     document.getElementById("mobileBackBtn").addEventListener("click", () => {
@@ -590,7 +607,8 @@
 
     // --- CLEAN CLOSING FUNCTIONS ---
     function closeAdminChatUI() {
-        if(currentKey) { update(ref(db, 'support_keys/' + currentKey), { admin_status: 'offline', admin_typing: false }); }
+        // 🆕 LAST SEEN ON CLOSE
+        if(currentKey) { update(ref(db, 'support_keys/' + currentKey), { admin_status: 'offline', admin_typing: false, admin_last_seen: serverTimestamp() }); }
         currentKey = null;
         
         if(currentMessagesRef) { off(currentMessagesRef); currentMessagesRef = null; }
@@ -717,6 +735,12 @@
             document.getElementById("dashboard").style.display = "flex";
             loadKeys();
             requestNotificationPermission(); 
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const deepLinkKey = urlParams.get('key');
+            if (deepLinkKey) {
+                setTimeout(() => openChat(deepLinkKey), 400);
+            }
         } else {
             document.getElementById("loginErrorMsg").style.display = "block";
         }
@@ -771,9 +795,10 @@
 
         const myKeyRef = ref(db, 'support_keys/' + currentKey);
         update(myKeyRef, { admin_status: 'online' });
-        onDisconnect(myKeyRef).update({ admin_status: 'offline', admin_typing: false });
+        
+        // 🆕 LAST SEEN ON DISCONNECT
+        onDisconnect(myKeyRef).update({ admin_status: 'offline', admin_typing: false, admin_last_seen: serverTimestamp() });
 
-        // 🆕 Ghost Listener Fix
         if(currentMessagesRef) off(currentMessagesRef);
         currentMessagesRef = ref(db, 'messages/' + key);
         
@@ -816,14 +841,12 @@
                 let updatesToPerform = {};
                 let hasDeletes = false;
 
-                // 🆕 Check if panel is physically open and tab is active
-                let isChatOpen = (currentKey === key) && !document.hidden && document.getElementById("mainChatArea").classList.contains("active-mobile") || window.innerWidth > 768;
+                let isChatOpen = (currentKey === key) && !document.hidden && (document.getElementById("mainChatArea").classList.contains("active-mobile") || window.innerWidth > 768);
 
                 Object.keys(msgs).forEach(msgId => {
                     let m = msgs[msgId];
                     if (now - m.timestamp > twelveHoursInMs) { updatesToPerform[msgId] = null; hasDeletes = true; return; }
                     
-                    // 🆕 GHOST LISTENER FIX: Sirf tab Read mark karo jab chat actually open ho
                     if(m.sender === 'student' && m.status !== 'read' && isChatOpen) { 
                         update(ref(db, `messages/${key}/${msgId}`), { status: 'read' }); 
                     }
@@ -855,13 +878,16 @@
             } else { msgBox.innerHTML = `<div class="empty-chat"><i class="fas fa-inbox"></i><p>Yahan abhi koi message nahi hai.</p></div>`; }
         });
 
-        // 🆕 STATUS TEXT FIX FOR ADMIN
+        // 🆕 LAST SEEN DISPLAY LOGIC
         onValue(currentStatusRef, (snapshot) => {
             const data = snapshot.val();
             if(data) {
                 if(data.student_typing) { statusBox.innerHTML = `<span class="status-typing">Typing... ✍️</span>`; } 
                 else if(data.student_status === 'online') { statusBox.innerHTML = `<span class="status-online">Online 🟢</span>`; } 
-                else { statusBox.innerHTML = `<span class="status-offline">Offline 🔴</span>`; }
+                else { 
+                    let lsText = data.student_last_seen ? `Last seen ${formatLastSeen(data.student_last_seen)}` : `Offline 🔴`;
+                    statusBox.innerHTML = `<span class="status-offline">${lsText}</span>`; 
+                }
             }
         });
     }
@@ -875,12 +901,19 @@
             if(replyingToData) { msgObj.replyTo = replyingToData; window.cancelReply(); }
             push(ref(db, 'messages/' + currentKey), msgObj);
             msgInput.value = ""; emojiPicker.classList.remove("active");
+            
+            // 🆕 KEYBOARD FIX: Keep focus after sending
+            msgInput.focus();
+
             update(ref(db, 'support_keys/' + currentKey), { admin_typing: false });
             setTimeout(() => { isSending = false; }, 300);
         }
     }
 
-    document.getElementById("adminSendBtn").addEventListener("click", sendMessage);
+    // 🆕 KEYBOARD FIX: Change click to mousedown & touchstart
+    document.getElementById("adminSendBtn").addEventListener("mousedown", (e) => { e.preventDefault(); sendMessage(); });
+    document.getElementById("adminSendBtn").addEventListener("touchstart", (e) => { e.preventDefault(); sendMessage(); });
+    
     msgInput.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); sendMessage(); } });
     msgInput.addEventListener("input", () => {
         if(currentKey) { update(ref(db, 'support_keys/' + currentKey), { admin_typing: true }); clearTimeout(typingTimer); typingTimer = setTimeout(() => { update(ref(db, 'support_keys/' + currentKey), { admin_typing: false }); }, 1500); }
