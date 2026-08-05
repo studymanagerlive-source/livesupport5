@@ -2,6 +2,7 @@
 <html lang="hi">
 <head>
 <meta charset="UTF-8">
+<!-- Mobile Keyboard Fix -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content, viewport-fit=cover">
 <title>Live Support | Admin Dashboard</title>
 <!-- PWA Manifest Link -->
@@ -13,7 +14,7 @@
     html, body { height: 100%; margin: 0; overflow: hidden; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; }
 
     /* ===== LOGIN SCREEN ===== */
-    #loginScreen { position: fixed; top:0; left:0; width:100%; height:100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); z-index: 100; }
+    #loginScreen { position: fixed; top:0; left:0; width:100%; height:100dvh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); z-index: 100; }
     .login-box { background: #1e293b; padding: 2.2rem 2rem; border-radius: 14px; width: 320px; text-align: center; box-shadow: 0 20px 45px rgba(0,0,0,0.5); border: 1px solid #334155; }
     .login-box i.fa-headset { font-size: 2.6rem; color: #25D366; margin-bottom: 10px; }
     .login-box h2 { font-size: 1.3rem; margin-bottom: 6px; }
@@ -24,7 +25,7 @@
     .login-error { color: #ef4444; font-size: 0.82rem; margin-top: 10px; display: none; }
 
     /* ===== DASHBOARD WORKSPACE ===== */
-    #dashboard { display: none; height: 100%; padding: 1rem; flex-direction: column; max-width: 1200px; margin: 0 auto; }
+    #dashboard { display: none; height: 100dvh; padding: 1rem; flex-direction: column; max-width: 1200px; margin: 0 auto; }
     .dash-header { display: flex; justify-content: space-between; background: rgba(0,0,0,0.5); padding: 1rem 1.5rem; border-radius: 10px; border-left: 6px solid #25D366; margin-bottom: 1rem; flex-shrink: 0; align-items: center;}
     .dash-header h1 { font-size: 1.2rem; display:flex; align-items:center; gap:10px; }
     
@@ -52,17 +53,18 @@
     @media (max-width: 768px) {
         #dashboard { padding: 0; }
         .dash-header { border-radius: 0; margin-bottom: 0; padding: 15px; border-left: none; border-bottom: 1px solid #334155; flex-shrink:0;}
-        .workspace { display: block; }
+        .workspace { display: block; height: calc(100dvh - 62px); }
         .sidebar { width: 100%; height: 100%; border-radius: 0; border: none; }
         
         .chat-area { 
             position: fixed; 
             top: 0; left: 0; bottom: 0; right: 0;
-            width: 100%; height: 100%; 
+            width: 100%; height: 100dvh; 
             transform: translateX(100%); 
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
             z-index: 9999; 
             border-radius: 0; border: none;
+            background: #0f172a;
         }
         .chat-header { border-radius: 0; }
         .chat-area.active-mobile { transform: translateX(0); }
@@ -270,13 +272,13 @@
     let isSending = false;
     const ADMIN_PASSWORD = "Ankush@2026";
 
-    // 🆕 GHOST LISTENER FIX: Track unsubscription functions
+    // 🆕 GHOST LISTENER FIX: Variables to store unsubscribe functions
     let unsubMessages = null;
     let unsubStatus = null;
     let unsubCalls = null;
     let replyingToData = null;
 
-    let isAppVisible = true;
+    let isAppVisible = !document.hidden;
 
     // --- 🆕 VISIBILITY LISTENER (LAST SEEN SUPPORT) ---
     document.addEventListener('visibilitychange', () => {
@@ -808,6 +810,19 @@
         if(unsubStatus) { unsubStatus(); unsubStatus = null; }
         if(unsubCalls) { unsubCalls(); unsubCalls = null; }
 
+        // 🆕 LISTEN FOR STATUS FIRST TO SET LOCAL TRACKER
+        unsubStatus = onValue(ref(db, `support_keys/${key}`), (snapshot) => {
+            const data = snapshot.val();
+            if(data) {
+                if(data.student_typing) { statusBox.innerHTML = `<span class="status-typing">Typing... ✍️</span>`; } 
+                else if(data.student_status === 'online') { statusBox.innerHTML = `<span class="status-online">Online 🟢</span>`; } 
+                else { 
+                    let lsText = data.student_last_seen ? `Last seen ${formatLastSeen(data.student_last_seen)}` : `Offline 🔴`;
+                    statusBox.innerHTML = `<span class="status-offline">${lsText}</span>`; 
+                }
+            }
+        });
+
         // LISTEN FOR CALLS
         unsubCalls = onValue(ref(db, `calls/${key}`), (snapshot) => {
             const data = snapshot.val();
@@ -850,7 +865,7 @@
                     let m = msgs[msgId];
                     if (now - m.timestamp > twelveHoursInMs) { updatesToPerform[msgId] = null; hasDeletes = true; return; }
                     
-                    // 🆕 GHOST LISTENER FIX: Sirf tab Read mark karo jab panel open ho aur app samne ho
+                    // 🆕 GHOST LISTENER DOUBLE PROTECTION FIX
                     if(m.sender === 'student' && m.status !== 'read' && isChatOpen && isAppVisible) { 
                         update(ref(db, `messages/${key}/${msgId}`), { status: 'read' }); 
                     }
@@ -880,19 +895,6 @@
                 if (hasDeletes) { update(ref(db, `messages/${key}`), updatesToPerform); }
                 msgBox.innerHTML = newHtmlString; msgBox.scrollTop = msgBox.scrollHeight;
             } else { msgBox.innerHTML = `<div class="empty-chat"><i class="fas fa-inbox"></i><p>Yahan abhi koi message nahi hai.</p></div>`; }
-        });
-
-        // LISTEN FOR STATUS
-        unsubStatus = onValue(ref(db, `support_keys/${key}`), (snapshot) => {
-            const data = snapshot.val();
-            if(data) {
-                if(data.student_typing) { statusBox.innerHTML = `<span class="status-typing">Typing... ✍️</span>`; } 
-                else if(data.student_status === 'online') { statusBox.innerHTML = `<span class="status-online">Online 🟢</span>`; } 
-                else { 
-                    let lsText = data.student_last_seen ? `Last seen ${formatLastSeen(data.student_last_seen)}` : `Offline 🔴`;
-                    statusBox.innerHTML = `<span class="status-offline">${lsText}</span>`; 
-                }
-            }
         });
     }
 
