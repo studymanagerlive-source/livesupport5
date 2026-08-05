@@ -204,7 +204,7 @@
 
         .ls-panel-body { padding: 18px 16px; display: flex; flex-direction: column; gap: 12px; }
         
-        /* 🆕 NEW CSS FIX FOR MOBILE CENTERED CHAT */
+        /* 🆕 MOBILE UI GAP FIX */
         @media (max-width: 480px) {
             .livesupport-panel { 
                 right: 15px; 
@@ -302,7 +302,7 @@
             <p>लाइव ऑनलाइन डेटाबेस · ऐप स्टाइल लेआउट</p>
         </div>
         <div class="header-actions">
-            <!-- 🆕 HIDDEN TOOLTIP & UPDATED EMOJI TRIGGER -->
+            <!-- 🆕 TOOLTIP REMOVED -->
             <div id="secretSupportBtn" style="font-size: 1.8rem; cursor: pointer; user-select: none;">👨‍💻</div>
             
             <div class="notif-bell" id="bellIconBtn" onclick="openNotifications()">
@@ -413,7 +413,7 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <input type="text" id="newSectionPassword" placeholder="पासवर्ड (प्राइवेट रखने के लिए, वर्ना খালি छोड़ें)">
+                    <input type="text" id="newSectionPassword" placeholder="पासवर्ड (प्राइवेट रखने के लिए, वर्ना खाली छोड़ें)">
                 </div>
                 <div class="form-group" style="width: 100%;">
                     <input type="text" id="newSectionIcon" placeholder="आइकॉन क्लास या direct Image URL पेस्ट करें">
@@ -500,7 +500,7 @@
     </div>
 </div>
 
-<div class="livesupport-fab" id="lsFabBtn" title="Live Support">
+<div class="livesupport-fab" id="lsFabBtn">
     <i class="fas fa-headset"></i>
 </div>
 
@@ -529,13 +529,11 @@
         <p id="keyErrorMsg" style="color: #ef4444; font-size: 0.8rem; text-align: center; margin-top: 10px; display: none;">Invalid Key! Check again.</p>
     </div>
 
-    <!-- Chat Interface -->
     <div id="lsChatArea" style="display: none; flex-direction: column; height: 350px; position: relative;">
         <div id="studentChatMessages" style="flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; background: #0f172a;">
             <!-- Realtime messages load here -->
         </div>
         <div class="ls-emoji-picker" id="studentEmojiPicker"></div>
-        <!-- Chat Bottom Wrap -->
         <div style="display: flex; flex-direction: column; background: #1e293b; border-top: 1px solid #334155;">
             <div id="replyPreviewBox">
                 <div id="replyPreviewName">Replying to...</div>
@@ -1640,15 +1638,18 @@
         }
     }
 
+    // --- 🆕 CLEAN CLOSING FUNCTIONS ---
+    function closeStudentChatUI() {
+        document.getElementById("lsCloseBtn").click();
+    }
+
     document.getElementById("endCallBtn").addEventListener("click", () => {
         if(activeSessionKey) remove(ref(db, `calls/${activeSessionKey}`));
         endCallLocal();
+        closeStudentChatUI(); // Manual cut hone par chat window bhi band hogi
     });
 
     function endCallLocal() {
-        // 🆕 NEW FIX: Only act as a call end if we were actually IN a call.
-        let wasInCall = (peerConnection !== null);
-
         document.getElementById("callOverlay").style.display = "none";
         document.getElementById("muteCallBtn").style.display = "none";
         document.getElementById("videoToggleBtn").style.display = "none";
@@ -1673,11 +1674,6 @@
         document.getElementById("localVideo").srcObject = null;
         document.getElementById("remoteAudio").volume = 1.0;
         document.getElementById("remoteVideoCall").volume = 1.0;
-        
-        // 🆕 CALL END HOTE HI CHAT BAND HO JAYEGI 
-        if (wasInCall) {
-            document.getElementById("lsCloseBtn").click();
-        }
     }
 
     function startCallTimer() {
@@ -1785,7 +1781,7 @@
             }
         }
         
-        supportTapTimer = setTimeout(() => { supportTapCount = 0; }, 1500); // Reset if user is too slow
+        supportTapTimer = setTimeout(() => { supportTapCount = 0; }, 1500); 
     });
 
     document.getElementById("lsCloseBtn").addEventListener("click", () => { 
@@ -1847,11 +1843,18 @@
         if(currentStatusRef) off(currentStatusRef);
         currentStatusRef = ref(db, 'support_keys/' + key);
 
+        // --- 🆕 FIXED BUG: Listen for Incoming Calls from Admin without auto-closing ---
         if(callStateRef) off(callStateRef);
         callStateRef = ref(db, `calls/${key}`);
         onValue(callStateRef, (snapshot) => {
             const data = snapshot.val();
-            if(!data) { endCallLocal(); return; }
+            let overlayVisible = document.getElementById("callOverlay").style.display === "flex";
+
+            if(!data) { 
+                // Agar call pehle chal rahi thi aur achanak cut ho gayi
+                if(overlayVisible) { endCallLocal(); closeStudentChatUI(); }
+                return; 
+            }
             
             if(data.caller === 'admin' && data.status === 'calling') {
                 document.getElementById("callOverlay").style.display = "flex";
@@ -1864,7 +1867,7 @@
                 document.getElementById("speakerCallBtn").style.display = "none";
                 document.getElementById("acceptCallBtn").onclick = () => answerCall(data.offer, data.callType);
             } else if (data.status === 'ended') {
-                endCallLocal();
+                if(overlayVisible) { endCallLocal(); closeStudentChatUI(); }
             }
         });
 
