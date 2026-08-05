@@ -230,7 +230,6 @@
                     <button class="action-icon-btn" id="adminAttachBtn" title="Send Gallery Media/File"><i class="fas fa-paperclip"></i></button>
                     <input type="file" id="adminFileInput" accept="image/*,video/*,audio/*" style="display: none;">
                     <input type="text" id="adminMsgInput" placeholder="Type a message..." autocomplete="off">
-                    <!-- FIX: Send button now maintains focus -->
                     <button class="send-btn" id="adminSendBtn"><i class="fas fa-paper-plane"></i></button>
                 </div>
             </div>
@@ -279,6 +278,7 @@
     let replyingToData = null;
 
     let isAppVisible = !document.hidden;
+    let currentStudentStatusLocal = 'offline';
 
     // --- 🆕 VISIBILITY LISTENER (LAST SEEN SUPPORT) ---
     document.addEventListener('visibilitychange', () => {
@@ -524,7 +524,16 @@
             });
 
         } catch (error) {
-            alert("Permission denied! Please allow camera/microphone access.");
+            console.error("Media Error: ", error);
+            if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+                alert("Error: Camera ya Microphone nahi mila! Kripya check karein ki device connect hai.");
+            } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+                alert("Error: Camera/Mic pehle se kisi aur app (Zoom/Meet/Camera) mein open hai.");
+            } else if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                alert("Error: Browser ya Windows Privacy settings se Mic/Camera block hai.");
+            } else {
+                alert("Call Error: " + error.message);
+            }
             endCallLocal();
         }
     }
@@ -585,7 +594,16 @@
             });
 
         } catch(error) {
-            alert("Camera/Microphone Error: " + error.message);
+            console.error("Media Error: ", error);
+            if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+                alert("Error: Camera ya Microphone nahi mila! Kripya check karein ki device connect hai.");
+            } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+                alert("Error: Camera/Mic pehle se kisi aur app (Zoom/Meet/Camera) mein open hai.");
+            } else if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                alert("Error: Browser ya Windows Privacy settings se Mic/Camera block hai.");
+            } else {
+                alert("Call Error: " + error.message);
+            }
             endCallLocal();
         }
     }
@@ -617,7 +635,7 @@
         if(currentKey) { update(ref(db, 'support_keys/' + currentKey), { admin_status: 'offline', admin_typing: false, admin_last_seen: serverTimestamp() }); }
         currentKey = null;
         
-        // 🆕 Ghost Listener Fix using Unsubscribe
+        // 🆕 Kill all listeners on close
         if(unsubMessages) { unsubMessages(); unsubMessages = null; }
         if(unsubStatus) { unsubStatus(); unsubStatus = null; }
         if(unsubCalls) { unsubCalls(); unsubCalls = null; }
@@ -814,6 +832,8 @@
         unsubStatus = onValue(ref(db, `support_keys/${key}`), (snapshot) => {
             const data = snapshot.val();
             if(data) {
+                currentStudentStatusLocal = data.student_status || 'offline'; 
+                
                 if(data.student_typing) { statusBox.innerHTML = `<span class="status-typing">Typing... ✍️</span>`; } 
                 else if(data.student_status === 'online') { statusBox.innerHTML = `<span class="status-online">Online 🟢</span>`; } 
                 else { 
@@ -866,7 +886,7 @@
                     if (now - m.timestamp > twelveHoursInMs) { updatesToPerform[msgId] = null; hasDeletes = true; return; }
                     
                     // 🆕 GHOST LISTENER DOUBLE PROTECTION FIX
-                    if(m.sender === 'student' && m.status !== 'read' && isChatOpen && isAppVisible) { 
+                    if(m.sender === 'student' && m.status !== 'read' && isChatOpen && isAppVisible && currentStudentStatusLocal === 'online') { 
                         update(ref(db, `messages/${key}/${msgId}`), { status: 'read' }); 
                     }
 
