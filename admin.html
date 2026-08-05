@@ -1,244 +1,144 @@
 <!DOCTYPE html>
 <html lang="hi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Study Notes Manager | लाइव ऐप</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
-        body { background: linear-gradient(135deg, #fff3e0 0%, #ffe6c7 100%); min-height: 100vh; padding: 1.5rem 1rem; }
-        .app-container { max-width: 1100px; margin: 0 auto; display: none; }
+<meta charset="UTF-8">
+<!-- 🆕 Mobile Keyboard Fix: interactive-widget=resizes-content -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content, viewport-fit=cover">
+<title>Live Support | Admin Dashboard</title>
+<!-- PWA Manifest Link -->
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+    /* 🆕 Fixed Body structure */
+    html, body { height: 100%; margin: 0; overflow: hidden; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; }
+
+    /* ===== LOGIN SCREEN ===== */
+    #loginScreen { position: fixed; top:0; left:0; width:100%; height:100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); z-index: 100; }
+    .login-box { background: #1e293b; padding: 2.2rem 2rem; border-radius: 14px; width: 320px; text-align: center; box-shadow: 0 20px 45px rgba(0,0,0,0.5); border: 1px solid #334155; }
+    .login-box i.fa-headset { font-size: 2.6rem; color: #25D366; margin-bottom: 10px; }
+    .login-box h2 { font-size: 1.3rem; margin-bottom: 6px; }
+    .login-box p { color: #94a3b8; font-size: 0.85rem; margin-bottom: 20px; }
+    .login-box input { width: 100%; padding: 12px; margin-bottom: 14px; background: #334155; border: none; border-radius: 8px; color: white; outline: none; }
+    .login-box button { width: 100%; padding: 12px; background: linear-gradient(145deg, #25D366, #1ebe57); border: none; border-radius: 8px; color: white; font-weight: 800; cursor: pointer; transition: 0.2s; }
+    .login-box button:hover { transform: translateY(-2px); }
+    .login-error { color: #ef4444; font-size: 0.82rem; margin-top: 10px; display: none; }
+
+    /* ===== DASHBOARD WORKSPACE ===== */
+    #dashboard { display: none; height: 100%; padding: 1rem; flex-direction: column; max-width: 1200px; margin: 0 auto; }
+    .dash-header { display: flex; justify-content: space-between; background: rgba(0,0,0,0.5); padding: 1rem 1.5rem; border-radius: 10px; border-left: 6px solid #25D366; margin-bottom: 1rem; flex-shrink: 0; align-items: center;}
+    .dash-header h1 { font-size: 1.2rem; display:flex; align-items:center; gap:10px; }
+    
+    .workspace { display: flex; gap: 15px; flex: 1; min-height: 0; position: relative; overflow: hidden; }
+    
+    /* SIDEBAR */
+    .sidebar { width: 300px; background: #1e293b; border-radius: 12px; display: flex; flex-direction: column; border: 1px solid #334155; flex-shrink: 0; }
+    .sidebar-header { padding: 15px; border-bottom: 1px solid #334155; text-align: center; flex-shrink:0;}
+    .generate-btn { width: 100%; background: #25D366; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .generate-btn:hover { background: #1ebe57; }
+    #keysList { flex: 1; overflow-y: auto; padding: 10px; }
+    .key-item { background: #334155; padding: 12px; border-radius: 8px; margin-bottom: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; color: #94a3b8; transition: 0.2s; }
+    .key-item:hover { background: #475569; color: white; }
+    .key-item.active { background: #075E54; color: white; border-left: 4px solid #25D366; }
+    
+    /* CHAT AREA */
+    .chat-area { flex: 1; background: #0f172a; border-radius: 12px; display: flex; flex-direction: column; border: 1px solid #334155; position: relative; overflow: hidden; }
+    .chat-header { background: #1e293b; padding: 15px; border-bottom: 1px solid #334155; border-radius: 12px 12px 0 0; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;}
+    .chat-header-info { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 0; }
+    .chat-header-title { font-weight: bold; display: flex; align-items: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .chat-status-bar { font-size: 0.8rem; font-weight: 600; min-height: 15px; }
+    
+    /* 🆕 MOBILE UI FIXES: FIXED HEADER & FULL SCREEN CHAT */
+    #mobileBackBtn { display: none; cursor: pointer; margin-right: 12px; font-size: 1.3rem; color: #cbd5e1; padding: 5px;}
+    
+    @media (max-width: 768px) {
+        #dashboard { padding: 0; }
+        .dash-header { border-radius: 0; margin-bottom: 0; padding: 15px; border-left: none; border-bottom: 1px solid #334155; flex-shrink:0;}
+        .workspace { display: block; }
+        .sidebar { width: 100%; height: 100%; border-radius: 0; border: none; }
         
-        #loadingScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0f172a; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; color: white; }
-        .loader-spinner { border: 5px solid #334155; border-top: 5px solid #f97316; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin-bottom: 15px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        /* ========= TOAST NOTIFICATIONS ========= */
-        #toastContainer { position: fixed; top: 20px; right: 20px; z-index: 99999; display: flex; flex-direction: column; gap: 10px; }
-        .toast { background: #1e293b; color: white; padding: 14px 20px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); font-weight: 600; transform: translateX(120%); animation: slideInToast 0.4s forwards cubic-bezier(0.175, 0.885, 0.32, 1.275); border-left: 5px solid; display: flex; align-items: center; gap: 12px; font-size: 0.95rem; }
-        .toast.success { border-color: #10b981; }
-        .toast.success i { color: #10b981; }
-        .toast.error { border-color: #ef4444; }
-        .toast.error i { color: #ef4444; }
-        .toast.info { border-color: #3b82f6; }
-        .toast.info i { color: #3b82f6; }
-        .toast.fade-out { animation: fadeOutToast 0.4s forwards; }
-        @keyframes slideInToast { to { transform: translateX(0); } }
-        @keyframes fadeOutToast { to { opacity: 0; transform: translateX(100%); } }
-
-        /* ========= HEADER & BELL ========= */
-        .hero-section { 
-            display: flex; justify-content: space-between; align-items: center; 
-            background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); 
-            padding: 1.2rem 2rem; margin-bottom: 1.5rem; 
-            border-left: 6px solid #f39c12; border-radius: 8px; 
-            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+        .chat-area { 
+            position: fixed; /* Freezes to screen entirely */
+            top: 0; left: 0; bottom: 0; right: 0;
+            width: 100%; height: 100%; 
+            transform: translateX(100%); 
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            z-index: 9999; /* Covers dashboard header too for bigger keyboard space */
+            border-radius: 0; border: none;
         }
-        .title-box { flex: 1; }
-        .title-box h1 { font-size: 1.8rem; background: linear-gradient(130deg, #fff3cf, #ffd966); -webkit-background-clip: text; background-clip: text; color: transparent; font-weight: 900; }
-        .title-box p { color: #fdebb3; font-weight: 500; margin-top: 6px; font-size: 0.9rem;}
-        
-        .header-actions { display: flex; gap: 15px; align-items: center; }
-        .admin-lock-icon { background: linear-gradient(145deg, #ff9f4a, #ff7e2e); padding: 10px 20px; color: white; font-weight: 800; cursor: pointer; border-radius: 8px; transition: 0.2s; box-shadow: 0 5px 12px rgba(0,0,0,0.2); white-space: nowrap;}
-        .admin-lock-icon:hover { background: #e67e22; transform: translateY(-3px); }
-        
-        .notif-bell { position: relative; color: white; font-size: 1.6rem; cursor: pointer; padding: 5px; transition: 0.2s; }
-        .notif-bell:hover { transform: scale(1.1); color: #ffd966; }
-        .notif-badge { position: absolute; top: 0; right: -2px; background: #ef4444; color: white; font-size: 0.65rem; font-weight: bold; width: 18px; height: 18px; border-radius: 50%; display: flex; justify-content: center; align-items: center; border: 2px solid #1e293b; display: none; }
-        .ring-anim { animation: bellRing 0.5s ease-in-out; }
-        @keyframes bellRing { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(-15deg); } 75% { transform: rotate(15deg); } }
+        .chat-header { border-radius: 0; }
+        .chat-area.active-mobile { transform: translateX(0); }
+        #mobileBackBtn { display: inline-block; }
+    }
 
-        @media (max-width: 650px) {
-            .hero-section { flex-direction: column; text-align: center; gap: 15px; padding: 1.5rem 1rem;}
-            .header-actions { width: 100%; justify-content: center; }
-        }
+    /* HEADER ACTION BUTTONS */
+    .header-actions { display: none; gap: 8px; align-items: center; }
+    .header-action-btn { background: #334155; border: none; color: white; padding: 8px 10px; border-radius: 8px; cursor: pointer; transition: 0.2s; font-size: 1rem; display: flex; align-items: center; justify-content: center; }
+    .header-action-btn:hover { background: #475569; color: #25D366; }
+    .header-action-btn.danger:hover { color: #ef4444; }
+    .header-action-btn.call:hover { color: #34b7f1; }
+    .header-action-btn.video:hover { color: #a855f7; }
 
-        /* ========= SEARCH BAR & CALENDAR ========= */
-        .search-bar-container {
-            background: #1e293b; padding: 12px 15px; border-radius: 8px; margin-bottom: 2.5rem;
-            display: flex; align-items: center; gap: 10px; border-left: 6px solid #10b981;
-            box-shadow: 0 8px 15px rgba(0,0,0,0.1); flex-wrap: wrap;
-        }
-        .search-bar-container i.fa-search { color: #10b981; font-size: 1.2rem; }
-        .search-bar-container input[type="text"] { background: transparent; border: none; color: white; flex: 1; min-width: 150px; font-size: 1.05rem; outline: none; font-weight: 500; }
-        .search-bar-container input::placeholder { color: #94a3b8; }
-        
-        .date-filter-box { display: flex; align-items: center; gap: 8px; background: #334155; padding: 5px 10px; border-radius: 6px; }
-        .date-filter-box input[type="date"] { background: transparent; border: none; color: #10b981; font-weight: bold; outline: none; cursor: pointer; font-family: 'Inter'; font-size: 0.85rem;}
-        .date-filter-box input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; filter: invert(1) sepia(1) saturate(5) hue-rotate(100deg); }
+    .status-online { color: #25D366; }
+    .status-offline { color: #94a3b8; }
+    .status-typing { color: #3b82f6; font-style: italic; }
+    
+    #chatMessages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+    .msg { max-width: 80%; padding: 10px 14px; border-radius: 12px; font-size: 0.95rem; line-height: 1.4; position: relative; word-wrap: break-word;}
+    .msg-admin { background: #075E54; color: white; align-self: flex-end; border-bottom-right-radius: 0; }
+    .msg-student { background: #334155; color: white; align-self: flex-start; border-bottom-left-radius: 0; }
+    .msg-time { display: flex; align-items: center; justify-content: flex-end; gap: 6px; font-size: 0.65rem; color: #cbd5e1; margin-top: 4px; }
+    
+    .msg-controls { display: flex; gap: 8px; opacity: 0.6; transition: 0.2s; }
+    .msg:hover .msg-controls { opacity: 1; }
+    .msg-btn { cursor: pointer; transition: 0.2s; font-size: 0.75rem; }
+    .msg-btn:hover { color: #fff; transform: scale(1.1); }
+    .msg-btn.reply:hover { color: #34b7f1; }
+    .msg-btn.delete:hover { color: #ef4444; }
 
-        /* ========= FIXED APP STYLE GRID & ICONS ========= */
-        .subjects-grid { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fill, minmax(95px, 1fr));
-            gap: 1.2rem; 
-            margin-bottom: 3rem; 
-            justify-items: center; 
-            align-items: start; 
-        }
-        @media (max-width: 450px) { 
-            .subjects-grid { grid-template-columns: repeat(3, 1fr); gap: 1rem; } 
-        }
-        
-        .subject-card { display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; transition: all 0.3s ease; width: 95px; }
-        .subject-card:hover { transform: translateY(-5px); }
-        
-        .app-icon-box { width: 72px; height: 72px; border-radius: 20px; display: flex; justify-content: center; align-items: center; font-size: 2.1rem; color: white; box-shadow: 0 8px 15px -4px rgba(0,0,0,0.35); position: relative; }
+    .replied-msg-box { background: rgba(0,0,0,0.25); border-left: 4px solid #25D366; padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; font-size: 0.8rem; color: #cbd5e1; cursor: pointer; }
+    .replied-msg-box strong { color: #25D366; display: block; margin-bottom: 2px;}
 
-        .subject-name { font-size: 0.75rem; font-weight: 700; color: #ffffff; background: #1e293b; padding: 5px 6px; border-radius: 8px; text-align: center; line-height: 1.2; word-break: break-word; box-shadow: 0 4px 6px rgba(0,0,0,0.15); width: 100%; min-height: 32px; display: flex; align-items: center; justify-content: center; }
+    .chat-bottom-section { display: none; flex-direction: column; background: #1e293b; border-top: 1px solid #334155; border-radius: 0 0 12px 12px; flex-shrink: 0;}
+    #replyPreviewBox { display: none; background: #334155; padding: 10px 15px; border-left: 4px solid #34b7f1; font-size: 0.85rem; color: #cbd5e1; position: relative; }
+    #replyPreviewName { font-weight: bold; color: #34b7f1; margin-bottom: 3px; }
+    #replyPreviewText { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 20px; }
+    .cancel-reply-btn { position: absolute; right: 15px; top: 15px; cursor: pointer; color: #ef4444; font-size: 1.1rem; transition: 0.2s; }
+    .cancel-reply-btn:hover { transform: scale(1.1); }
 
-        .chapter-count-badge { position: absolute; top: -5px; right: -5px; background: #ef4444; padding: 3px 7px; font-weight: 900; font-size: 11px; border-radius: 12px; border: 2px solid #fff3e0; color: white; z-index: 10; line-height: 1; box-shadow: 0 2px 4px rgba(0,0,0,0.3);}
-        .lock-badge { position: absolute; bottom: -5px; left: -5px; background: #1e293b; padding: 4px; font-size: 10px; border-radius: 50%; color: #ffd966; border: 2px solid #fff3e0; line-height: 1; box-shadow: 0 2px 4px rgba(0,0,0,0.3);}
+    .chat-input-box { display: flex; gap: 8px; padding: 12px; align-items: center; }
+    .chat-input-box input[type="text"] { flex: 1; background: #334155; border: none; padding: 12px 15px; border-radius: 25px; color: white; outline: none; }
+    .chat-input-box button.send-btn { background: #25D366; border: none; width: 45px; height: 45px; border-radius: 50%; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink:0;}
+    
+    .action-icon-btn { background: none; border: none; color: #94a3b8; font-size: 1.4rem; cursor: pointer; transition: 0.2s; padding: 0 5px;}
+    .action-icon-btn:hover { color: #ffd966; }
+    .emoji-picker { display: none; position: absolute; bottom: 75px; left: 15px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 10px; width: 280px; max-height: 200px; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 1000; grid-template-columns: repeat(6, 1fr); gap: 5px; }
+    .emoji-picker.active { display: grid; }
+    .emoji-picker span { cursor: pointer; font-size: 1.4rem; text-align: center; padding: 5px; transition: 0.2s; border-radius: 5px; }
+    .emoji-picker span:hover { background: #334155; }
 
-        /* ========= COMPACT MASTER LIST ========= */
-        .master-chapters-section { background: #1e293b; padding: 1.6rem; margin-top: 1rem; border-radius: 8px; border-left: 6px solid #f97316; }
-        .master-title { font-size: 1.5rem; font-weight: 700; color: #ffd966; margin-bottom: 1rem; border-left: 4px solid #f97316; padding-left: 1rem; }
-        
-        .compact-list { display: flex; flex-direction: column; max-height: 380px; overflow-y: auto; scroll-behavior: auto; padding-right: 5px; position: relative; }
-        .compact-list::-webkit-scrollbar { width: 6px; }
-        .compact-list::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
+    .empty-chat { flex:1; display:flex; align-items:center; justify-content:center; color: #94a3b8; flex-direction: column; gap: 15px; text-align: center; padding: 20px;}
+    .empty-chat i { font-size: 3rem; opacity: 0.5; }
+    
+    .chat-media-img { max-width: 100%; max-height: 200px; border-radius: 8px; margin-top: 5px; cursor: pointer; object-fit: contain; background: #0f172a;}
+    .chat-media-video { max-width: 100%; max-height: 200px; border-radius: 8px; margin-top: 5px; background: #000; }
+    .chat-media-audio { max-width: 200px; margin-top: 5px; outline: none; }
 
-        .compact-chapter-item { background: #0f172a; padding: 0.8rem 1rem; display: flex; justify-content: space-between; align-items: center; gap: 12px; border: 1px solid #334155; border-left: 4px solid #f97316; border-radius: 6px; color: white; flex-shrink: 0; margin-bottom: 10px; width: 100%; }
-        
-        .compact-item-text { display: block; flex: 1; min-width: 0; line-height: 1.5; }
-        .compact-badge { background: #ffedd5; padding: 3px 8px; font-weight: 700; color: #b45309; font-size: 0.75rem; border-radius: 4px; display: inline-block; vertical-align: middle; margin-right: 8px; margin-bottom: 2px;}
-        .compact-item-text strong { color: white; font-size: 0.95rem; display: inline; vertical-align: middle; word-break: break-word; }
-        
-        .compact-item-actions { display: flex; flex-wrap: wrap; gap: 6px; flex-shrink: 0; justify-content: flex-end; align-items: center; }
-        .action-btn { border: none; padding: 6px 14px; color: white; font-weight: bold; cursor: pointer; border-radius: 4px; transition: 0.2s; white-space: nowrap; font-size: 0.9rem;}
-        .btn-open { background: #f97316; } .btn-open:hover { background: #ea580c; transform: scale(1.03); }
-        .btn-edit { background: #2563eb; display: none;} .btn-edit.show-admin { display: inline-block; }
-        .btn-delete { background: #dc2626; display: none;} .btn-delete.show-admin { display: inline-block; }
-
-        /* ========= OVERLAYS ========= */
-        .page-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0f172a; z-index: 1000; overflow-y: auto; padding: 1.2rem; display: none; }
-        .page-overlay.active { display: block; animation: fade 0.2s; }
-        @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
-        .detail-header { background: #1e293b; padding: 1rem; display: flex; justify-content: space-between; align-items: center; border-left: 6px solid #f97316; margin-bottom: 1.5rem; border-radius: 4px; }
-        .back-home-btn, .lock-close-btn { background: #334155; color: white; border: none; border-radius: 4px; padding: 8px 20px; font-weight: bold; cursor: pointer; }
-        .lock-close-btn { background: #dc2626; }
-        .subject-title-lg { font-size: 1.8rem; color: #ffb347; font-weight: 800; display:flex; align-items:center; gap:10px; flex-wrap: wrap;}
-        
-        .chapter-link-card { background: #1e293b; padding: 0.8rem 1rem; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #f97316; border-radius: 4px; margin-bottom: 12px; color: white; gap: 12px; }
-        .chapter-link-text { flex: 1; min-width: 0; display: block; line-height: 1.5; }
-        .chapter-link-text span { display: inline-block; vertical-align: middle; margin-right: 8px; margin-bottom: 2px; font-size: 1.1rem; }
-        .chapter-link-text strong { display: inline; vertical-align: middle; word-break: break-word; font-size: 0.95rem; }
-        .sub-subject-card-item { background: #2d3a4b; padding: 0.8rem; margin-bottom: 8px; cursor: pointer; border-left: 4px solid #f97316; border-radius: 4px; color: white; font-weight: bold; display: flex; justify-content: space-between;}
-
-        /* ========= ADMIN PANEL ========= */
-        .admin-panel-area { display: none; margin-top: 2rem; background: #0f172a; padding: 1.6rem; border-left: 8px solid #f97316; border-radius: 8px; color: white;}
-        .admin-panel-area.show-admin { display: block; }
-        .admin-panel-area h3, .admin-panel-area h4 { color: white; margin-bottom: 1rem; }
-        .logout-btn { background: #dc2626; float: right; border: none; border-radius: 4px; padding: 6px 20px; color: white; font-weight: bold; cursor: pointer; margin-bottom: 1rem; }
-        .form-flex { display: flex; flex-wrap: wrap; gap: 1rem; clear: both; margin-bottom: 1.2rem; }
-        .form-group input, .form-group select { background: #334155; border: none; padding: 10px; color: white; width: 100%; border-radius: 4px; }
-        .btn-primary { background: #f97316; border: none; border-radius: 4px; padding: 10px 24px; font-weight: bold; cursor: pointer; color: white; width:100%;}
-        .section-manager { margin-top: 1.5rem; border-top: 1px solid #475569; padding-top: 1rem; }
-
-        /* ========= MODALS ========= */
-        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 2000; visibility: hidden; opacity: 0; transition: 0.2s; }
-        .modal.active { visibility: visible; opacity: 1; }
-        .login-box { background: #1e293b; padding: 2.5rem 2rem; max-width: 380px; width: 90%; border-left: 6px solid #f97316; border-radius: 8px; text-align: center; color: white; box-shadow: 0 15px 30px rgba(0,0,0,0.5);}
-        .login-box input { background: #334155; border: none; border-radius: 4px; padding: 12px; width: 100%; margin: 10px 0; color: white; }
-        
-        .notif-modal .login-box { border-left-color: #10b981; text-align: left; padding: 1.5rem;}
-        .notif-list { max-height: 250px; overflow-y: auto; margin-top: 15px; }
-        .notif-item { background: #0f172a; padding: 10px; border-left: 3px solid #10b981; margin-bottom: 8px; border-radius: 4px; font-size: 0.9rem;}
-        .notif-item span { font-size: 0.75rem; color: #94a3b8; display: block; margin-top: 4px;}
-
-        /* QUICK DATE POPUP */
-        #quickDatePopup {
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.8);
-            background: rgba(15, 23, 42, 0.95); padding: 20px 30px; border-radius: 12px;
-            color: #10b981; z-index: 99999; display: none; text-align: center;
-            border: 2px solid #10b981; font-weight: bold; box-shadow: 0 15px 35px rgba(0,0,0,0.6);
-            opacity: 0; transition: all 0.2s ease-in-out;
-        }
-        #quickDatePopup i { font-size: 2.2rem; margin-bottom: 8px; }
-        .quick-date-title { color: white; font-size: 0.95rem; margin-bottom: 6px; }
-        #quickDatePopupText { font-size: 1.15rem; color: #ffd966; }
-
-        /* FOOTER WITH VISITOR BADGE STYLE */
-        .site-footer { margin-top: 2rem; background: #0f172a; text-align: center; padding: 1.2rem 1rem; border-radius: 8px; color: #94a3b8; border-top: 2px solid #f97316; font-size: 0.85rem; }
-
-        /* ===== AUDIO / VIDEO CALL OVERLAY CSS ===== */
-        #callOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.95); z-index: 9999; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
-        #remoteVideoCall { display: none; width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; z-index: 1; }
-        #localVideo { display: none; width: 110px; height: 160px; object-fit: cover; position: absolute; bottom: 120px; right: 20px; z-index: 2; border-radius: 12px; border: 2px solid white; box-shadow: 0 8px 16px rgba(0,0,0,0.5); }
-        .call-box { text-align: center; color: white; display: flex; flex-direction: column; align-items: center; z-index: 3; transition: all 0.3s ease; }
-        .pulse-ring { width: 120px; height: 120px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #1e293b; position: relative; margin-bottom: 20px; border: 4px solid #334155;}
-        .pulse-ring::before { content: ''; position: absolute; width: 100%; height: 100%; border-radius: 50%; background: #25D366; animation: pulse 1.5s infinite; z-index: -1; opacity: 0.6; }
-        @keyframes pulse { 0% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(1.5); opacity: 0; } }
-        .call-buttons { display: flex; gap: 15px; margin-top: 30px; align-items: center; justify-content: center; flex-wrap: wrap; }
-        .call-btn { width: 60px; height: 60px; border-radius: 50%; border: none; color: white; font-size: 1.4rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; box-shadow: 0 10px 20px rgba(0,0,0,0.3);}
-        .call-btn:hover { transform: scale(1.08); }
-        .btn-accept { background: #25D366; display: none; }
-        .btn-reject { background: #ef4444; }
-
-        /* ========= LIVE SUPPORT WIDGET ========= */
-        .livesupport-fab {
-            display: none !important; 
-        }
-        .livesupport-panel {
-            position: fixed; bottom: 20px; right: 20px; width: 340px; max-width: calc(100vw - 30px);
-            background: #1e293b; border-radius: 14px; box-shadow: 0 15px 40px rgba(0,0,0,0.45);
-            z-index: 9001; display: none; overflow: hidden; border: 1px solid #334155;
-        }
-        .livesupport-panel.open { display: block; animation: lsSlideUp 0.25s ease; }
-        @keyframes lsSlideUp { from { opacity:0; transform: translateY(15px); } to { opacity:1; transform: translateY(0); } }
-        
-        .ls-panel-header {
-            background: linear-gradient(135deg, #128C7E, #075E54); padding: 14px 16px;
-            display: flex; align-items: center; justify-content: space-between; color: white;
-        }
-        .ls-panel-header h4 { font-size: 1rem; font-weight: 800; display:flex; align-items:center; gap:8px; }
-        
-        .ls-action-icon { cursor: pointer; opacity: 0.85; font-size: 1.1rem; transition: 0.2s; display: flex; align-items: center; justify-content: center;}
-        .ls-action-icon:hover { opacity: 1; color: #ffd966; }
-        .ls-action-icon.danger:hover { color: #ef4444; }
-        .ls-action-icon.call:hover { color: #34b7f1; }
-        .ls-action-icon.video:hover { color: #a855f7; }
-
-        .ls-panel-body { padding: 18px 16px; display: flex; flex-direction: column; gap: 12px; }
-        
-        @media (max-width: 480px) {
-            .livesupport-panel { right: 15px; left: 15px; bottom: 20px; width: auto; max-width: none; }
-        }
-
-        .chat-bubble { max-width: 85%; padding: 8px 12px; border-radius: 12px; font-size: 0.9rem; line-height: 1.3; position: relative; word-wrap: break-word;}
-        .chat-bubble.admin { background: #334155; color: white; align-self: flex-start; border-bottom-left-radius: 0; }
-        .chat-bubble.student { background: #075E54; color: white; align-self: flex-end; border-bottom-right-radius: 0; }
-        .bubble-time { display: flex; align-items: center; justify-content: flex-end; gap: 6px; font-size: 0.65rem; color: #cbd5e1; margin-top: 3px; }
-
-        .msg-controls { display: flex; gap: 8px; opacity: 0.6; transition: 0.2s; margin-right: 5px; }
-        .chat-bubble:hover .msg-controls { opacity: 1; }
-        .msg-btn { cursor: pointer; transition: 0.2s; font-size: 0.75rem; }
-        .msg-btn:hover { color: #fff; transform: scale(1.1); }
-        .msg-btn.reply:hover { color: #34b7f1; }
-        .msg-btn.delete:hover { color: #ef4444; }
-
-        .replied-msg-box { background: rgba(0,0,0,0.25); border-left: 4px solid #25D366; padding: 6px 10px; border-radius: 6px; margin-bottom: 6px; font-size: 0.8rem; color: #cbd5e1; cursor: pointer; }
-        .replied-msg-box strong { color: #25D366; display: block; margin-bottom: 2px;}
-
-        #replyPreviewBox { display: none; background: #334155; padding: 10px 15px; border-left: 4px solid #34b7f1; font-size: 0.85rem; color: #cbd5e1; position: relative; border-bottom: 1px solid #1e293b;}
-        #replyPreviewName { font-weight: bold; color: #34b7f1; margin-bottom: 3px; }
-        #replyPreviewText { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 20px; }
-        .cancel-reply-btn { position: absolute; right: 15px; top: 15px; cursor: pointer; color: #ef4444; font-size: 1.1rem; transition: 0.2s; }
-        .cancel-reply-btn:hover { transform: scale(1.1); }
-
-        .chat-media-img { max-width: 100%; max-height: 200px; border-radius: 8px; margin-top: 5px; cursor: pointer; object-fit: contain; background: #0f172a;}
-        .chat-media-video { max-width: 100%; max-height: 200px; border-radius: 8px; margin-top: 5px; background: #000; }
-        .chat-media-audio { max-width: 200px; margin-top: 5px; outline: none; }
-
-        .ls-emoji-btn { background: none; border: none; color: #94a3b8; font-size: 1.5rem; cursor: pointer; transition: 0.2s; padding-right: 5px; }
-        .ls-emoji-btn:hover { color: #ffd966; }
-        .ls-emoji-picker { display: none; position: absolute; bottom: 100px; left: 10px; right: 10px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 10px; max-height: 180px; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 1000; grid-template-columns: repeat(7, 1fr); gap: 5px; }
-        .ls-emoji-picker.active { display: grid; }
-        .ls-emoji-picker span { cursor: pointer; font-size: 1.4rem; text-align: center; padding: 5px; transition: 0.2s; border-radius: 5px; }
-        .ls-emoji-picker span:hover { background: #334155; }
-    </style>
+    /* ===== AUDIO / VIDEO CALL OVERLAY CSS ===== */
+    #callOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.95); z-index: 9999; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+    #remoteVideoCall { display: none; width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; z-index: 1; }
+    #localVideo { display: none; width: 110px; height: 160px; object-fit: cover; position: absolute; bottom: 120px; right: 20px; z-index: 2; border-radius: 12px; border: 2px solid white; box-shadow: 0 8px 16px rgba(0,0,0,0.5); }
+    .call-box { text-align: center; color: white; display: flex; flex-direction: column; align-items: center; z-index: 3; transition: all 0.3s ease; }
+    .pulse-ring { width: 120px; height: 120px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #1e293b; position: relative; margin-bottom: 20px; border: 4px solid #334155;}
+    .pulse-ring::before { content: ''; position: absolute; width: 100%; height: 100%; border-radius: 50%; background: #25D366; animation: pulse 1.5s infinite; z-index: -1; opacity: 0.6; }
+    @keyframes pulse { 0% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(1.5); opacity: 0; } }
+    .call-buttons { display: flex; gap: 15px; margin-top: 30px; align-items: center; justify-content: center; flex-wrap: wrap; }
+    .call-btn { width: 60px; height: 60px; border-radius: 50%; border: none; color: white; font-size: 1.4rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; box-shadow: 0 10px 20px rgba(0,0,0,0.3);}
+    .call-btn:hover { transform: scale(1.08); }
+    .btn-accept { background: #25D366; display: none; }
+    .btn-reject { background: #ef4444; }
+</style>
 </head>
 <body>
 
@@ -250,7 +150,7 @@
 
     <div class="call-box" id="callBoxUI">
         <div class="pulse-ring" id="callPulse"><i class="fas fa-user-circle" style="font-size:5rem; color:#94a3b8;"></i></div>
-        <h2 id="callStatusText" style="font-size: 1.5rem; text-shadow: 0 2px 5px rgba(0,0,0,0.8);">Calling Admin...</h2>
+        <h2 id="callStatusText" style="font-size: 1.5rem; text-shadow: 0 2px 5px rgba(0,0,0,0.8);">Calling Student...</h2>
         <p id="callTimer" style="color: #fff; margin-top: 8px; display: none; font-weight: bold; text-shadow: 0 2px 5px rgba(0,0,0,0.8);">00:00</p>
         
         <div class="call-buttons">
@@ -263,1096 +163,91 @@
     </div>
 </div>
 
-<div id="toastContainer"></div>
-
-<div id="quickDatePopup">
-    <i class="fas fa-calendar-check"></i>
-    <div class="quick-date-title">Added On:</div>
-    <div id="quickDatePopupText"></div>
-</div>
-
-<div id="loadingScreen">
-    <div class="loader-spinner"></div>
-    <h3 id="loadingText">Loading Data...</h3>
-</div>
-
-<div class="app-container" id="homeContainer">
-    <div class="hero-section">
-        <div class="title-box">
-            <h1><i class="fas fa-database"></i> 📚 Study Notes Manager</h1>
-            <p>लाइव ऑनलाइन डेटाबेस · ऐप स्टाइल लेआउट</p>
-        </div>
-        <div class="header-actions">
-            <!-- 🆕 TOOLTIP REMOVED COMPLETELY -->
-            <div id="secretSupportBtn" style="font-size: 1.8rem; cursor: pointer; user-select: none;">👨‍💻</div>
-            
-            <div class="notif-bell" id="bellIconBtn" onclick="openNotifications()">
-                <i class="fas fa-bell"></i>
-                <span class="notif-badge" id="notifBadgeCounter">0</span>
-            </div>
-            <div class="admin-lock-icon" id="adminLockBtn"><i class="fas fa-lock"></i> Admin</div>
-        </div>
-    </div>
-    
-    <div class="search-bar-container">
-        <i class="fas fa-search"></i>
-        <input type="text" id="globalSearchInput" placeholder="Search (ex: alankar, math, pdf)...">
-        
-        <div class="date-filter-box">
-            <i class="fas fa-calendar-alt" style="color: #10b981;"></i>
-            <input type="date" id="dateSearchInput" title="तारीख के हिसाब से खोजें">
-            <i class="fas fa-times-circle" id="clearDateBtn" style="color:#ef4444; font-size:1.1rem; cursor:pointer; display:none; margin-left:4px;" title="कैलेंडर रीसेट करें"></i>
-        </div>
-    </div>
-    
-    <div class="subjects-grid" id="subjectsGrid"></div>
-    
-    <div class="master-chapters-section">
-        <div class="master-title" id="listTitle"><i class="fas fa-layer-group"></i> All Lists (Compact View)</div>
-        <div id="masterCompactList" class="compact-list"></div>
-    </div>
-    
-    <div class="site-footer">
-        <p>© 2025 Study Notes Manager | सम्पर्क: <strong>8273684939</strong></p>
-        <div style="margin-top: 12px;">
-            <img src="https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=studynotesmanager.ankush.app&count_bg=%23F97316&title_bg=%231E293B&icon=google-analytics.svg&icon_color=%23E7E7E7&title=Total+Visits&edge_flat=true" alt="Visitor Count" style="border-radius: 4px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
-        </div>
-    </div>
-
-    <div id="adminPanel" class="admin-panel-area">
-        <button id="logoutAdminBtn" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</button>
-        <h3 id="adminFormTitle"><i class="fas fa-plus-circle"></i> Add New Data</h3>
-        <div class="form-flex">
-            
-            <div class="form-group" style="width: 100%; background: #1e293b; padding: 14px; border-radius: 8px; border: 1px dashed #f97316; margin-bottom: 5px;">
-                <label style="color: #ffd966; font-size: 0.9rem; font-weight: bold; display: block; margin-bottom: 8px;">
-                    <i class="fab fa-google-drive"></i> Google Drive Cloud Sync
-                </label>
-                <button class="action-btn btn-open" id="scanDriveBtn" type="button" style="background: #f97316; width: 100%; padding: 8px;"><i class="fas fa-cloud-download-alt"></i> Fetch Latest File from Drive</button>
-            </div>
-
-            <div class="form-group"><input type="text" id="adminChapterName" placeholder="फाइल/वीडियो/इमेज का नाम"></div>
-            <div class="form-group"><input type="url" id="adminPdfUrl" placeholder="लिंक (URL)"></div>
-            
-            <div class="form-group"><select id="adminSubjectSelect"></select></div>
-            
-            <div class="form-group" id="gkSubSubjectGroup" style="display:none; width: 100%;">
-                <select id="adminSubSubjectSelect" style="margin-bottom: 10px; background: #334155; border: none; padding: 10px; color: white; width: 100%; border-radius: 4px; font-weight: bold;">
-                </select>
-                <input type="text" id="gkSubSubjectName" placeholder="नया सब-सब्जेक्ट नाम लिखें (जैसे Polity)" style="display:none;">
-            </div>
-            
-            <div class="form-group">
-                <select id="adminItemType">
-                    <option value="default">डिफ़ॉल्ट (फोल्डर के अनुसार)</option>
-                    <option value="pdf">पीडीएफ (PDF / Notes)</option>
-                    <option value="video">वीडियो (YouTube / Play)</option>
-                    <option value="image">इमेज (Photo / Screenshot)</option>
-                    <option value="test">ऑनलाइन टेस्ट (Quiz)</option>
-                    <option value="link">अन्य लिंक (Website)</option>
-                    <option value="book">किताब (Book)</option>
-                </select>
-            </div>
-
-            <div style="width:100%; display:flex; gap:10px;">
-                <button class="btn-primary" id="addChapterAdminBtn" style="flex:1;"><i class="fas fa-plus"></i> Add Item</button>
-                <button class="btn-primary" id="cancelEditBtn" style="background:#475569; display:none; flex:0.4;">Cancel</button>
-            </div>
-        </div>
-        
-        <div class="section-manager">
-            <h4>🔐 किसी भी फोल्डर को लॉक / अनलॉक करें</h4>
-            <div class="form-flex">
-                <div class="form-group" style="width: 100%;"><select id="adminLockSelect"></select></div>
-                <div class="form-group" style="width: 100%;">
-                    <input type="text" id="adminLockPassword" placeholder="पासवर्ड दर्ज करें (सिर्फ लॉक करने के लिए)">
-                </div>
-                <div style="width:100%; display:flex; gap:10px;">
-                    <button class="btn-primary" id="updateLockBtn" style="flex:1; background:#10b981;"><i class="fas fa-lock"></i> लॉक करें</button>
-                    <button class="btn-primary" id="unlockFolderBtn" style="flex:1; background:#ef4444;"><i class="fas fa-unlock"></i> अनलॉक करें</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="section-manager">
-            <h4>➕ नया कस्टम सेक्शन बनाएं</h4>
-            <div class="form-flex">
-                <div class="form-group"><input type="text" id="newSectionName" placeholder="नाम (जैसे My Documents)"></div>
-                <div class="form-group">
-                    <select id="newSectionContentType">
-                        <option value="pdf">पीडीएफ (PDF/Notes)</option>
-                        <option value="video">वीडियो (Video/Lectures)</option>
-                        <option value="test">ऑनलाइन टेस्ट (Mock/Quizzes)</option>
-                        <option value="link">अन्य लिंक (Web Links)</option>
-                        <option value="book">किताब (Book/E-Book)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <select id="newSectionType">
-                        <option value="normal">नॉर्मल (सीधे फाइल)</option>
-                        <option value="nested">सब-सेक्शन वाला (फ़ोल्डर के अंदर)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <input type="text" id="newSectionPassword" placeholder="पासवर्ड (प्राइवेट रखने के लिए, वर्ना खाली छोड़ें)">
-                </div>
-                <div class="form-group" style="width: 100%;">
-                    <input type="text" id="newSectionIcon" placeholder="आइकॉन क्लास या direct Image URL पेस्ट करें">
-                </div>
-                <button class="btn-primary" id="createSectionBtn"><i class="fas fa-folder-plus"></i> Create Folder</button>
-            </div>
-            <h4>🗑️ सेक्शन प्रबंधन</h4>
-            <div id="manageSectionsList" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
-        </div>
-    </div>
-</div>
-
-<div id="subjectPage" class="page-overlay">
-    <div class="detail-header">
-        <div class="subject-title-lg" id="detailSubjectTitle"></div>
-        <button class="back-home-btn" id="backHomeBtn"><i class="fas fa-arrow-left"></i> Back</button>
-    </div>
-    <div id="subjectDetailContent" class="chapters-container"></div>
-</div>
-
-<div id="subSubjectPage" class="page-overlay">
-    <div class="detail-header">
-        <div class="subject-title-lg" id="subSubjectTitle"></div>
-        <button class="back-home-btn" id="backToSubjectsBtn"><i class="fas fa-arrow-left"></i> Back</button>
-    </div>
-    <div id="subSubjectChaptersList" class="chapters-container"></div>
-</div>
-
-<div id="loginModal" class="modal">
+<div id="loginScreen">
     <div class="login-box">
-        <i class="fas fa-user-shield" style="font-size: 2.5rem; color:#f97316; margin-bottom: 10px;"></i>
-        <h3>Admin Login</h3>
-        <input type="text" id="loginUserId" placeholder="Mobile Number">
-        <input type="password" id="loginPassword" placeholder="Password">
-        <div style="display: flex; gap: 10px; margin-top: 15px;">
-            <button class="btn-primary" id="closeLoginBtn" style="background: #475569; width: 50%;">Cancel</button>
-            <button class="btn-primary" id="submitLoginBtn" style="width: 50%;">Login</button>
-        </div>
+        <i class="fas fa-headset"></i>
+        <h2>Live Support</h2>
+        <p>Admin Dashboard — sirf Ankush ke liye</p>
+        <input type="password" id="adminPassInput" placeholder="Password" autocomplete="off">
+        <button id="adminLoginBtn">Login</button>
+        <div class="login-error" id="loginErrorMsg">Galat password! Dobara try karo.</div>
     </div>
 </div>
 
-<div id="passwordModal" class="modal">
-    <div class="login-box" style="border-left-color: #ef4444;">
-        <i class="fas fa-lock" style="font-size: 2.5rem; color:#ef4444; margin-bottom: 10px;"></i>
-        <h3>Secure Folder</h3>
-        <p id="passwordModalSubject" style="color: #94a3b8; margin-bottom: 15px; font-size: 0.9rem;"></p>
-        
-        <div style="position: relative; width: 100%; margin: 10px 0;">
-            <input type="password" id="folderPasswordInput" placeholder="Enter Password..." style="width: 100%; padding: 12px; padding-right: 40px; background: #334155; border: none; border-radius: 4px; color: white; outline: none;">
-            <i class="fas fa-eye" id="togglePasswordEye" style="position: absolute; right: 15px; top: 14px; color: #94a3b8; cursor: pointer; font-size: 1.1rem;"></i>
-        </div>
-        
-        <div style="display: flex; gap: 10px; margin-top: 15px;">
-            <button class="btn-primary" id="cancelPasswordBtn" style="background: #475569; width: 50%;">Cancel</button>
-            <button class="btn-primary" id="submitPasswordBtn" style="width: 50%; background: #10b981;">Unlock</button>
+<div id="dashboard">
+    <div class="dash-header">
+        <h1><i class="fas fa-headset"></i> Support Desk (Admin)</h1>
+        <div style="display:flex; gap:10px;">
+            <button id="installAppBtn" style="display:none; background:#a855f7; color:white; border:none; padding:8px 15px; border-radius:8px; cursor:pointer;"><i class="fas fa-download"></i> Install App</button>
+            <button id="logoutBtn" style="background:#334155; color:white; border:none; padding:8px 15px; border-radius:8px; cursor:pointer;"><i class="fas fa-sign-out-alt"></i> Logout</button>
         </div>
     </div>
-</div>
 
-<div id="adminUnlockModal" class="modal">
-    <div class="login-box" style="border-left-color: #ef4444;">
-        <i class="fas fa-unlock-alt" style="font-size: 2.5rem; color:#ef4444; margin-bottom: 10px;"></i>
-        <h3>Remove Password</h3>
-        <p style="color: #94a3b8; margin-bottom: 15px; font-size: 0.9rem;">Enter current password to permanently unlock this folder.</p>
-        <input type="password" id="adminUnlockPassInput" placeholder="Current Password..." style="width: 100%; padding: 12px; background: #334155; border: none; border-radius: 4px; color: white;">
-        <div style="display: flex; gap: 10px; margin-top: 15px;">
-            <button class="btn-primary" id="cancelAdminUnlockBtn" style="background: #475569; width: 50%;">Cancel</button>
-            <button class="btn-primary" id="submitAdminUnlockBtn" style="width: 50%; background: #ef4444;">Remove Lock</button>
-        </div>
-    </div>
-</div>
-
-<div id="notifModal" class="modal notif-modal">
-    <div class="login-box" style="position: relative;">
-        <h3 style="color: white; margin-bottom: 5px;"><i class="fas fa-bell" style="color:#10b981;"></i> Recent Updates</h3>
-        <div class="notif-list" id="notifListContainer">
-            <div style="color:#94a3b8; text-align:center; padding: 20px;">No new updates</div>
-        </div>
-        
-        <div style="display: flex; gap: 10px; margin-top: 15px;">
-            <button class="btn-primary" onclick="closeNotifications()" style="width: 50%; background: #475569;">Close</button>
-            <button class="btn-primary" onclick="clearLocalNotifications()" style="width: 50%; background: #ef4444;"><i class="fas fa-trash-alt"></i> Clear All</button>
-        </div>
-    </div>
-</div>
-
-<div class="livesupport-fab" id="lsFabBtn">
-    <i class="fas fa-headset"></i>
-</div>
-
-<div class="livesupport-panel" id="lsPanel" style="display: none;">
-    <div class="ls-panel-header" style="flex-direction: column; align-items: stretch; gap: 5px;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h4><i class="fas fa-headset"></i> Live Support</h4>
-            <div style="display: flex; gap: 12px; align-items: center;">
-                <span id="lsHeaderIcons" style="display:none; gap:12px; align-items:center;">
-                    <i class="fas fa-video ls-action-icon video" id="studentVideoCallBtn" title="Video Call"></i>
-                    <i class="fas fa-phone-alt ls-action-icon call" id="studentCallBtn" title="Voice Call"></i>
-                    <i class="fas fa-camera ls-action-icon" id="studentHeaderCameraBtn" title="Direct Camera"></i>
-                    <input type="file" id="studentCameraInput" accept="image/*" capture style="display: none;">
-                    <i class="fas fa-trash-alt ls-action-icon danger" id="studentClearChatBtn" title="Clear Chat for Both"></i>
-                </span>
-                <i class="fas fa-times ls-close" id="lsCloseBtn" style="cursor: pointer; margin-left: 5px;"></i>
+    <div class="workspace">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <button class="generate-btn" id="generateKeyBtn"><i class="fas fa-key"></i> Generate 6-Digit Key</button>
             </div>
+            <div id="keysList"></div>
         </div>
-        <div id="adminStatusDisplay" style="display:none; font-size: 0.75rem; font-weight: 600; color: #ffd966;"></div>
-    </div>
-    
-    <div class="ls-panel-body" id="lsKeyEntryArea">
-        <p style="color: #94a3b8; font-size: 0.85rem; text-align: center; margin-bottom: 15px;">Enter your 6-digit access key provided by Admin to start secure chat.</p>
-        <input type="text" id="studentKeyInput" placeholder="Enter 6-digit key" autocomplete="off" autocorrect="off" spellcheck="false" inputmode="numeric" style="width: 100%; padding: 12px; background: #334155; border: none; border-radius: 8px; color: white; text-align: center; font-size: 1.2rem; letter-spacing: 2px; margin-bottom: 15px; outline: none;" maxlength="6">
-        <button id="verifyKeyBtn" style="width: 100%; padding: 12px; background: #25D366; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer;">Start Chat</button>
-        <p id="keyErrorMsg" style="color: #ef4444; font-size: 0.8rem; text-align: center; margin-top: 10px; display: none;">Invalid Key! Check again.</p>
-    </div>
 
-    <div id="lsChatArea" style="display: none; flex-direction: column; height: 350px; position: relative;">
-        <div id="studentChatMessages" style="flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; background: #0f172a;">
-            <!-- Realtime messages load here -->
-        </div>
-        <div class="ls-emoji-picker" id="studentEmojiPicker"></div>
-        <div style="display: flex; flex-direction: column; background: #1e293b; border-top: 1px solid #334155;">
-            <div id="replyPreviewBox">
-                <div id="replyPreviewName">Replying to...</div>
-                <div id="replyPreviewText"></div>
-                <i class="fas fa-times cancel-reply-btn" onclick="window.cancelReply()"></i>
+        <div class="chat-area" id="mainChatArea">
+            <div class="chat-header" id="chatHeader">
+                <div class="chat-header-info">
+                    <div class="chat-header-title">
+                        <i class="fas fa-arrow-left" id="mobileBackBtn"></i>
+                        <span id="chatTitleText"><i class="fas fa-comments"></i> Select a key</span>
+                    </div>
+                    <div class="chat-status-bar" id="studentStatus"></div>
+                </div>
+                
+                <div class="header-actions" id="headerActionsBlock">
+                    <button class="header-action-btn video" id="adminVideoCallBtn" title="Video Call"><i class="fas fa-video"></i></button>
+                    <button class="header-action-btn call" id="adminCallBtn" title="Voice Call"><i class="fas fa-phone-alt"></i></button>
+                    <button class="header-action-btn" id="adminHeaderCameraBtn" title="Direct Camera"><i class="fas fa-camera"></i></button>
+                    <input type="file" id="adminCameraInput" accept="image/*" capture style="display: none;">
+                    <button class="header-action-btn danger" id="adminClearChatBtn" title="Clear Chat for Both"><i class="fas fa-trash-alt"></i></button>
+                </div>
             </div>
-            <div style="display: flex; gap: 8px; padding: 10px; align-items: center;">
-                <button class="ls-emoji-btn" id="studentEmojiBtn"><i class="far fa-smile"></i></button>
-                <button class="ls-emoji-btn" id="studentAttachBtn" title="Send Media/File"><i class="fas fa-paperclip"></i></button>
-                <input type="file" id="studentFileInput" accept="image/*,video/*,audio/*" style="display: none;">
-                <input type="text" id="studentMsgInput" placeholder="Type a message..." autocomplete="off" style="flex: 1; padding: 10px 15px; border-radius: 20px; border: none; background: #334155; color: white; outline: none;">
-                <button id="studentSendBtn" style="background: #25D366; border: none; width: 40px; height: 40px; border-radius: 50%; color: white; cursor: pointer; flex-shrink: 0;"><i class="fas fa-paper-plane"></i></button>
+            
+            <div id="chatMessages">
+                <div class="empty-chat">
+                    <i class="fas fa-inbox"></i>
+                    <p>Koi chat select nahi ki gayi hai.</p>
+                </div>
+            </div>
+
+            <div class="emoji-picker" id="adminEmojiPicker"></div>
+
+            <div class="chat-bottom-section" id="chatBottomWrapper">
+                <div id="replyPreviewBox">
+                    <div id="replyPreviewName">Replying to...</div>
+                    <div id="replyPreviewText"></div>
+                    <i class="fas fa-times cancel-reply-btn" onclick="window.cancelReply()"></i>
+                </div>
+
+                <div class="chat-input-box" id="chatInputArea">
+                    <button class="action-icon-btn" id="adminEmojiBtn"><i class="far fa-smile"></i></button>
+                    <button class="action-icon-btn" id="adminAttachBtn" title="Send Gallery Media/File"><i class="fas fa-paperclip"></i></button>
+                    <input type="file" id="adminFileInput" accept="image/*,video/*,audio/*" style="display: none;">
+                    <input type="text" id="adminMsgInput" placeholder="Type a message..." autocomplete="off">
+                    <button class="send-btn" id="adminSendBtn"><i class="fas fa-paper-plane"></i></button>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<script>
-    if (window.location.hash) history.replaceState(null, null, window.location.pathname);
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyE6NajCOnS0lZA-1ITRi72wL4eJjSetMr_zcOCsoijO4CNHWEHRq0TUg0H46oR0avBQQ/exec"; 
-    const ENCODED_ID = "ODI3MzY4NDkzOQ=="; 
-    const ENCODED_PW = "QW5rdXNoQDEyMzFAMTIz"; 
-    
-    let isAdminLoggedIn = false;
-    let appData = { customSections: {}, notifications: [] };
-    const DEFAULT_SECTIONS = ["Hindi", "Math", "Reasoning", "CurrentAffairs", "GKGS"];
-    
-    let currentParentSection = "GKGS"; 
-    let currentOpenSubject = "";
-    let currentOpenSubSubject = "";
-    let isPageActive = "home"; 
-    let allGlobalItems = []; 
-    let unlockedSession = {}; 
-    let pendingSubjectToOpen = null;
-    let editMode = false;
-    let editItemDetails = {};
-    let unreadNotifCount = 0;
-
-    const hinglishDict = { "hindi":"हिंदी", "math":"गणित", "reasoning":"तर्क", "current":"करंट", "affairs":"अफेयर्स", "gk":"जीके", "gs":"जीएस", "polity":"संविधान", "history":"इतिहास", "geography":"भूगोल", "science":"विज्ञान", "sarvanam":"सर्वनाम", "alankar":"अलंकार", "sandhi":"संधि", "samas":"समास", "practice":"प्रैक्टिस", "test":"टेस्ट", "video":"वीडियो", "question":"क्वेश्चन", "sir":"सर", "vivek":"विवेक", "book":"किताब", "document":"डॉक्यूमेंट", "my":"माय", "image":"इमेज", "photo":"फोटो" };
-
-    function formatTime(ts) {
-        if(!ts) return "";
-        let d = new Date(ts);
-        const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-        return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}, ${d.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'})}`;
-    }
-
-    function showToast(message, type = "info") {
-        let container = document.getElementById("toastContainer");
-        let toast = document.createElement("div");
-        toast.className = `toast ${type}`;
-        let icon = type === "success" ? "fa-check-circle" : type === "error" ? "fa-times-circle" : "fa-info-circle";
-        toast.innerHTML = `<i class="fas ${icon}"></i> <span>${message}</span>`;
-        container.appendChild(toast);
-        setTimeout(() => { toast.classList.add("fade-out"); setTimeout(() => toast.remove(), 400); }, 3000);
-    }
-
-    let audioCtx = null;
-    function unlockAudio() {
-        if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if(audioCtx.state === 'suspended') audioCtx.resume();
-    }
-    ['click', 'touchstart', 'scroll', 'keydown'].forEach(evt => document.addEventListener(evt, unlockAudio, {once:true}));
-
-    function playNotificationSound() {
-        try {
-            if ("vibrate" in navigator) navigator.vibrate([400, 200, 400, 200, 600]); 
-            if(audioCtx) {
-                if(audioCtx.state === 'suspended') audioCtx.resume();
-                const osc1 = audioCtx.createOscillator();
-                const gain1 = audioCtx.createGain();
-                osc1.type = 'sine'; osc1.frequency.setValueAtTime(880, audioCtx.currentTime); 
-                gain1.gain.setValueAtTime(0.2, audioCtx.currentTime);
-                gain1.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.8);
-                osc1.connect(gain1); gain1.connect(audioCtx.destination);
-                osc1.start(); osc1.stop(audioCtx.currentTime + 0.8);
-
-                setTimeout(() => {
-                    const osc2 = audioCtx.createOscillator();
-                    const gain2 = audioCtx.createGain();
-                    osc2.type = 'sine'; osc2.frequency.setValueAtTime(1046.5, audioCtx.currentTime); 
-                    gain2.gain.setValueAtTime(0.2, audioCtx.currentTime);
-                    gain2.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 1.2);
-                    osc2.connect(gain2); gain2.connect(audioCtx.destination);
-                    osc2.start(); osc2.stop(audioCtx.currentTime + 1.2);
-                }, 300);
-            }
-        } catch(e) { console.log("Audio/Vibration blocked"); }
-    }
-
-    function addNotification(section, chapterName) {
-        if(!appData.notifications) appData.notifications = [];
-        let timeStr = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-        appData.notifications.unshift({ text: `${section} - ${chapterName}`, time: timeStr, timestamp: Date.now() });
-        if(appData.notifications.length > 15) appData.notifications.pop(); 
-    }
-
-    function renderNotifications() {
-        const cont = document.getElementById("notifListContainer");
-        let localClearedTime = parseInt(localStorage.getItem('clearedNotifsTime') || "0");
-        let visibleNotifs = (appData.notifications || []).filter(n => (n.timestamp || 0) > localClearedTime);
-
-        if(visibleNotifs.length === 0) {
-            cont.innerHTML = `<div style="color:#94a3b8; text-align:center; padding: 20px;">No new updates</div>`;
-            return;
-        }
-        let h = "";
-        visibleNotifs.forEach(n => {
-            h += `<div class="notif-item"><i class="fas fa-check-circle" style="color:#10b981; margin-right:5px;"></i> ${escapeHtml(n.text)} <span>${n.time}</span></div>`;
-        });
-        cont.innerHTML = h;
-    }
-
-    function clearLocalNotifications() {
-        localStorage.setItem('clearedNotifsTime', Date.now().toString());
-        renderNotifications();
-        checkUnreadNotifications(); 
-        showToast("Notifications Cleared", "info");
-    }
-
-    function openNotifications() {
-        renderNotifications();
-        document.getElementById("notifModal").classList.add("active");
-        window.location.hash = "notifications";
-        localStorage.setItem('seenNotifsTime', Date.now().toString());
-        checkUnreadNotifications(); 
-        document.getElementById("bellIconBtn").classList.remove("ring-anim");
-    }
-
-    function closeNotifications() { history.back(); }
-
-    function checkUnreadNotifications() {
-        let localClearedTime = parseInt(localStorage.getItem('clearedNotifsTime') || "0");
-        let localSeenTime = parseInt(localStorage.getItem('seenNotifsTime') || "0");
-        let timeToCompare = Math.max(localClearedTime, localSeenTime);
-        
-        let unread = (appData.notifications || []).filter(n => (n.timestamp || 0) > timeToCompare).length;
-        let badge = document.getElementById("notifBadgeCounter");
-        if(unread > 0) {
-            unreadNotifCount = unread;
-            badge.innerText = unreadNotifCount;
-            badge.style.display = "flex";
-        } else {
-            unreadNotifCount = 0;
-            badge.style.display = "none";
-        }
-    }
-
-    function triggerNotificationAlert() {
-        checkUnreadNotifications();
-        let bell = document.getElementById("bellIconBtn");
-        bell.classList.remove("ring-anim");
-        void bell.offsetWidth; 
-        bell.classList.add("ring-anim");
-        playNotificationSound();
-    }
-
-    document.getElementById("dateSearchInput").addEventListener("change", function(e) {
-        let val = e.target.value;
-        if(val) document.getElementById("clearDateBtn").style.display = "inline-block";
-        else document.getElementById("clearDateBtn").style.display = "none";
-        renderCompactMasterList(document.getElementById("globalSearchInput").value, val);
-    });
-
-    document.getElementById("clearDateBtn").addEventListener("click", function() {
-        document.getElementById("dateSearchInput").value = "";
-        this.style.display = "none";
-        renderCompactMasterList(document.getElementById("globalSearchInput").value, "");
-    });
-
-    const compactListEl = document.getElementById("masterCompactList");
-    let autoScrollTimer;
-    let isUserScrolling = false;
-    let resumeScrollTimeout;
-
-    function startSmoothAutoScroll() {
-        clearInterval(autoScrollTimer);
-        autoScrollTimer = setInterval(() => {
-            if(!isUserScrolling && document.getElementById("globalSearchInput").value.trim() === "" && document.getElementById("dateSearchInput").value === "") {
-                compactListEl.scrollTop += 1;
-                if(Math.ceil(compactListEl.scrollTop + compactListEl.clientHeight) >= compactListEl.scrollHeight / 2) {
-                    compactListEl.scrollTop = 0;
-                }
-            }
-        }, 30); 
-    }
-
-    function handleUserInteraction() { isUserScrolling = true; clearTimeout(resumeScrollTimeout); }
-    function handleUserInteractionEnd() { clearTimeout(resumeScrollTimeout); resumeScrollTimeout = setTimeout(() => { isUserScrolling = false; }, 4000); }
-
-    compactListEl.addEventListener("touchstart", handleUserInteraction);
-    compactListEl.addEventListener("mousedown", handleUserInteraction);
-    compactListEl.addEventListener("wheel", handleUserInteraction);
-    compactListEl.addEventListener("touchend", handleUserInteractionEnd);
-    compactListEl.addEventListener("mouseup", handleUserInteractionEnd);
-    compactListEl.addEventListener("mouseleave", handleUserInteractionEnd);
-
-    startSmoothAutoScroll();
-
-    document.getElementById("togglePasswordEye").addEventListener("click", function() {
-        let input = document.getElementById("folderPasswordInput");
-        if (input.type === "password") {
-            input.type = "text"; this.classList.remove("fa-eye"); this.classList.add("fa-eye-slash");
-        } else {
-            input.type = "password"; this.classList.remove("fa-eye-slash"); this.classList.add("fa-eye");
-        }
-    });
-
-    document.getElementById("cancelPasswordBtn").addEventListener("click", () => {
-        document.getElementById("passwordModal").classList.remove("active");
-        pendingSubjectToOpen = null;
-        history.back(); 
-    });
-
-    document.getElementById("submitPasswordBtn").addEventListener("click", () => {
-        let pass = document.getElementById("folderPasswordInput").value;
-        const secData = getSectionData(pendingSubjectToOpen);
-        
-        if(btoa(pass) === secData.password) {
-            unlockedSession[pendingSubjectToOpen] = true;
-            document.getElementById("passwordModal").classList.remove("active");
-            history.replaceState(null, null, window.location.pathname); 
-            openSubject(pendingSubjectToOpen);
-            showToast("Folder Unlocked Successfully!", "success");
-        } else {
-            showToast("Incorrect Password!", "error");
-        }
-    });
-
-    async function loadData() {
-        try {
-            document.getElementById("loadingScreen").style.display = "flex";
-            const response = await fetch(SCRIPT_URL);
-            appData = await response.json();
-            if(!appData.customSections) appData.customSections = {};
-            if(!appData.notifications) appData.notifications = [];
-            DEFAULT_SECTIONS.forEach(s => { if(s === "GKGS") { if(!appData[s]) appData[s] = {}; } else if(!appData[s]) appData[s] = []; });
-            
-            document.getElementById("loadingScreen").style.display = "none";
-            document.getElementById("homeContainer").style.display = "block";
-            fullRefresh();
-            checkUnreadNotifications(); 
-        } catch (error) { document.getElementById("loadingText").innerText = "Network Error!"; }
-    }
-
-    async function silentBackgroundUpdate() {
-        try {
-            const response = await fetch(SCRIPT_URL);
-            const storedData = await response.json();
-            
-            let isNewUpdate = false;
-            if(storedData.notifications && appData.notifications) {
-                let latestStored = storedData.notifications[0];
-                let latestLocal = appData.notifications.length > 0 ? appData.notifications[0] : null;
-                
-                if(latestStored && (!latestLocal || latestStored.timestamp > latestLocal.timestamp)) {
-                    let localClearedTime = parseInt(localStorage.getItem('clearedNotifsTime') || "0");
-                    let localSeenTime = parseInt(localStorage.getItem('seenNotifsTime') || "0");
-                    let timeToCompare = Math.max(localClearedTime, localSeenTime);
-                    if (latestStored.timestamp > timeToCompare) { isNewUpdate = true; }
-                }
-            } else if (storedData.notifications && storedData.notifications.length > 0 && (!appData.notifications || appData.notifications.length === 0)) {
-                isNewUpdate = true;
-            }
-
-            if (JSON.stringify(storedData) !== JSON.stringify(appData)) {
-                appData = storedData;
-                if(!appData.customSections) appData.customSections = {};
-                if(!appData.notifications) appData.notifications = [];
-                DEFAULT_SECTIONS.forEach(s => { if(s === "GKGS") { if(!appData[s]) appData[s] = {}; } else if(!appData[s]) appData[s] = []; });
-                
-                fullRefresh();
-                if (isPageActive === "subject" && currentOpenSubject) openSubject(currentOpenSubject, true);
-                else if (isPageActive === "subSubject" && currentOpenSubject && currentOpenSubSubject) openSubSubject(currentOpenSubject, currentOpenSubSubject, true);
-                
-                if(isNewUpdate && !isAdminLoggedIn) {
-                    triggerNotificationAlert();
-                    showToast("New Study Material Added!", "info");
-                }
-            }
-        } catch (error) {}
-    }
-    setInterval(silentBackgroundUpdate, 10000);
-
-    async function saveData() {
-        document.getElementById("loadingScreen").style.display = "flex";
-        document.getElementById("loadingText").innerText = "Saving Data...";
-        try {
-            await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ data: appData }) });
-            document.getElementById("loadingScreen").style.display = "none";
-        } catch(e) {
-            showToast("Save Error!", "error");
-            document.getElementById("loadingScreen").style.display = "none";
-        }
-    }
-
-    function genId() { return Date.now() + '-' + Math.random().toString(36).substr(2, 6); }
-    function escapeHtml(str) { if(!str) return ''; return str.replace(/[&<>]/g, m => m=='&'?'&amp;':m=='<'?'&lt;':'&gt;'); }
-
-    function getAllSections() {
-        let sections = [];
-        DEFAULT_SECTIONS.forEach(s => {
-            let meta = appData.customSections[s] || {};
-            sections.push({ key: s, isDefault: true, contentType: meta.contentType || "pdf", customIcon: meta.customIcon || "", isLocked: meta.isLocked || false });
-        });
-        for(let k in appData.customSections) {
-            if(!DEFAULT_SECTIONS.includes(k)) {
-                sections.push({ key: k, isDefault: false, type: appData.customSections[k].type, contentType: appData.customSections[k].contentType || "pdf", customIcon: appData.customSections[k].customIcon || "", isLocked: appData.customSections[k].isLocked || false });
-            }
-        }
-        return sections;
-    }
-    
-    function getSectionData(key) {
-        let meta = appData.customSections[key] || {};
-        if(DEFAULT_SECTIONS.includes(key)) {
-            let data = appData[key] || (key === "GKGS" ? {} : []);
-            return { type: key === "GKGS" ? "nested" : "normal", contentType: meta.contentType || "pdf", customIcon: meta.customIcon || "", isLocked: meta.isLocked || false, password: meta.password || "", data: data };
-        }
-        return appData.customSections[key] || { type: "normal", contentType: "pdf", data: [] };
-    }
-    
-    function getTotalChapters(secKey) {
-        const { type, data } = getSectionData(secKey);
-        if(type === "normal") return data.length;
-        else { let c=0; for(let s in data) c+=data[s].length; return c; }
-    }
-
-    function getItemDisplayDetails(itemType, folderContentType) {
-        let type = (itemType && itemType !== 'default') ? itemType : folderContentType;
-        let icon = '<i class="fas fa-file-pdf" style="color:#ff6b81;"></i>';
-        let btnText = 'Open PDF';
-        let btnIcon = 'fas fa-book-open';
-
-        if(type === 'video') { icon = '<i class="fas fa-play-circle" style="color:#ff4757;"></i>'; btnText = 'Play Video'; btnIcon = 'fas fa-play'; } 
-        else if(type === 'image') { icon = '<i class="fas fa-image" style="color:#a855f7;"></i>'; btnText = 'View Image'; btnIcon = 'fas fa-image'; } 
-        else if(type === 'test') { icon = '<i class="fas fa-check-circle" style="color:#10b981;"></i>'; btnText = 'Start Quiz'; btnIcon = 'fas fa-pencil-alt'; } 
-        else if(type === 'link') { icon = '<i class="fas fa-link" style="color:#6366f1;"></i>'; btnText = 'Open Link'; btnIcon = 'fas fa-globe'; } 
-        else if(type === 'book') { icon = '<i class="fas fa-book" style="color:#3b82f6;"></i>'; btnText = 'Read Book'; btnIcon = 'fas fa-book-reader'; }
-
-        return { icon, btnText, btnIcon };
-    }
-
-    function getGradient(key, isLocked) {
-        if (isLocked) return "linear-gradient(135deg, #475569, #0f172a)"; 
-        if (!key) return "linear-gradient(135deg, #1e3c72, #2a5298)"; 
-        
-        const gradientList = [
-            "linear-gradient(135deg, #1e3c72, #2a5298)", "linear-gradient(135deg, #0f5c3f, #1e8f5e)", "linear-gradient(135deg, #b85c00, #f39c12)", 
-            "linear-gradient(135deg, #6a1b9a, #9c27b0)", "linear-gradient(135deg, #b71c1c, #f44336)", "linear-gradient(135deg, #00c6ff, #0072ff)", 
-            "linear-gradient(135deg, #10b981, #047857)", "linear-gradient(135deg, #c2185b, #e91e63)", "linear-gradient(135deg, #6366f1, #4338ca)", 
-            "linear-gradient(135deg, #f59e0b, #d97706)", "linear-gradient(135deg, #06b6d4, #0891b2)", "linear-gradient(135deg, #8b5cf6, #6d28d9)", 
-            "linear-gradient(135deg, #ec4899, #be185d)", "linear-gradient(135deg, #84cc16, #4d7c0f)", "linear-gradient(135deg, #14b8a6, #0f766e)", 
-            "linear-gradient(135deg, #eab308, #ca8a04)", "linear-gradient(135deg, #f43f5e, #e11d48)", "linear-gradient(135deg, #3b82f6, #1d4ed8)", 
-            "linear-gradient(135deg, #ea580c, #c2410c)"  
-        ];
-
-        const def = { "Hindi": 0, "Math": 1, "GKGS": 2, "Reasoning": 3, "CurrentAffairs": 4 };
-        if (def[key] !== undefined) return gradientList[def[key]];
-        
-        let hash = 0;
-        for (let i = 0; i < key.length; i++) { hash = key.charCodeAt(i) + ((hash << 5) - hash); }
-        hash = Math.abs(hash);
-        let index = 5 + (hash % (gradientList.length - 5));
-        return gradientList[index];
-    }
-
-    function renderHomeCards() {
-        const grid = document.getElementById("subjectsGrid");
-        let html = "";
-        getAllSections().forEach(s => {
-            let count = getTotalChapters(s.key);
-            let iconClass = "fas fa-folder";
-            
-            if(s.key === "Hindi") iconClass = "fas fa-language";
-            else if(s.key === "Math") iconClass = "fas fa-calculator";
-            else if(s.key === "GKGS") iconClass = "fas fa-globe-asia";
-            else if(s.key === "Reasoning") iconClass = "fas fa-brain";
-            else if(s.key === "CurrentAffairs") iconClass = "fas fa-newspaper";
-            else if(s.contentType === "video") iconClass = "fas fa-play"; 
-            else if(s.contentType === "test") iconClass = "fas fa-laptop-code"; 
-            else if(s.contentType === "link") iconClass = "fas fa-link"; 
-            else if(s.contentType === "book") iconClass = "fas fa-book"; 
-            
-            let iconHtml = `<i class="${iconClass}"></i>`;
-            if(s.customIcon && s.customIcon.trim() !== "") {
-                if(s.customIcon.startsWith("http")) {
-                    iconHtml = `<img src="${escapeHtml(s.customIcon)}" style="width: 35px; height: 35px; object-fit: contain; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));" onerror="this.outerHTML='<i class=\\'fas fa-image\\' style=\\'font-size: 2.1rem;\\'></i>'">`;
-                } else {
-                    iconHtml = `<i class="${escapeHtml(s.customIcon)}"></i>`;
-                }
-            }
-            
-            let lockIcon = s.isLocked ? `<i class="fas fa-lock lock-badge"></i>` : '';
-            let bgGradient = getGradient(s.key, s.isLocked);
-            let borderStyle = s.isLocked ? "border: 2px solid #ef4444;" : "";
-            
-            html += `<div class="subject-card" data-section="${s.key}">
-                        <div class="app-icon-box" style="background: ${bgGradient}; ${borderStyle}">
-                            ${iconHtml}
-                            <div class="chapter-count-badge">${count}</div>
-                            ${lockIcon}
-                        </div>
-                        <div class="subject-name">${escapeHtml(s.key)}</div>
-                     </div>`;
-        });
-        grid.innerHTML = html;
-        document.querySelectorAll(".subject-card").forEach(c => c.addEventListener("click", () => openSubject(c.getAttribute("data-section"))));
-    }
-
-    function openSubject(secKey, isSilentUpdate = false) {
-        const secData = getSectionData(secKey);
-        
-        if(secData.isLocked && !unlockedSession[secKey] && !isSilentUpdate) {
-            pendingSubjectToOpen = secKey;
-            document.getElementById("passwordModalSubject").innerText = `"${secKey}" is a Secure Folder`;
-            document.getElementById("folderPasswordInput").value = "";
-            document.getElementById("folderPasswordInput").type = "password";
-            document.getElementById("togglePasswordEye").classList.remove("fa-eye-slash");
-            document.getElementById("togglePasswordEye").classList.add("fa-eye");
-            
-            window.location.hash = "password";
-            document.getElementById("passwordModal").classList.add("active");
-            return;
-        }
-
-        currentOpenSubject = secKey; isPageActive = "subject";
-        if(!isSilentUpdate) window.location.hash = "subject";
-
-        const { type, contentType, data } = secData;
-        const cont = document.getElementById("subjectDetailContent");
-
-        let lockBtnHtml = secData.isLocked ? `<button class="lock-close-btn" onclick="lockFolder()"><i class="fas fa-lock"></i> 🔒 Lock Folder</button>` : '';
-        
-        if(type === "nested") {
-            const subs = Object.keys(data);
-            document.getElementById("detailSubjectTitle").innerHTML = `📁 ${secKey} ${lockBtnHtml}`;
-            if(subs.length === 0) cont.innerHTML = `<div style="color:white;text-align:center;">No Items</div>`;
-            else {
-                let h = "";
-                subs.forEach(ss => { h += `<div class="sub-subject-card-item" data-subsub="${escapeHtml(ss)}"><div><i class="fas fa-folder-open" style="color:#ffd966;"></i> <strong>${escapeHtml(ss)}</strong> (${data[ss].length} items)</div><i class="fas fa-chevron-right"></i></div>`; });
-                cont.innerHTML = h;
-                document.querySelectorAll(".sub-subject-card-item").forEach(el => el.addEventListener("click", () => openSubSubject(secKey, el.getAttribute("data-subsub"))));
-            }
-            document.getElementById("subjectPage").classList.add("active");
-            document.getElementById("subSubjectPage").classList.remove("active");
-        } else {
-            const chapters = data;
-            document.getElementById("detailSubjectTitle").innerHTML = `📖 ${secKey} ${lockBtnHtml}`;
-            if(chapters.length === 0) cont.innerHTML = `<div style="color:white;text-align:center;">No Items</div>`;
-            else {
-                let h = "";
-                chapters.forEach(ch => { 
-                    let display = getItemDisplayDetails(ch.itemType, contentType);
-                    h += `<div class="chapter-link-card">
-                        <div class="chapter-link-text">
-                            <span style="display:inline-block; vertical-align:middle; margin-right:8px; font-size:1.1rem;">${display.icon}</span> 
-                            <strong style="display:inline; vertical-align:middle; font-size:0.95rem; word-break:break-word;">${escapeHtml(ch.name)}</strong>
-                        </div>
-                        <div class="compact-item-actions">
-                            <button class="action-btn btn-open" data-url="${escapeHtml(ch.url)}" data-ts="${ch.timestamp || ''}"><i class="${display.btnIcon}"></i> Open</button>
-                            <button class="action-btn btn-edit ${isAdminLoggedIn ? 'show-admin' : ''}" onclick="startEdit('${ch.id}', '${secKey}', null, '${escapeHtml(ch.name)}', '${escapeHtml(ch.url)}', '${ch.itemType || 'default'}')">Edit</button>
-                            <button class="action-btn btn-delete ${isAdminLoggedIn ? 'show-admin' : ''}" onclick="deleteItem('${ch.id}', '${secKey}', null)">Delete</button>
-                        </div>
-                    </div>`; 
-                });
-                cont.innerHTML = h;
-                attachOpenButtons(cont);
-            }
-            document.getElementById("subjectPage").classList.add("active");
-        }
-    }
-
-    function lockFolder() { history.back(); }
-
-    function openSubSubject(parent, subName, isSilentUpdate = false) {
-        currentParentSection = parent; currentOpenSubject = parent; currentOpenSubSubject = subName; isPageActive = "subSubject";
-        if(!isSilentUpdate) window.location.hash = "subsubject";
-
-        const { data, contentType, isLocked } = getSectionData(parent);
-        const chapters = data[subName] || [];
-        
-        let lockBtnHtml = isLocked ? `<button class="lock-close-btn" onclick="lockFolder()"><i class="fas fa-lock"></i> 🔒 Lock Folder</button>` : '';
-        document.getElementById("subSubjectTitle").innerHTML = `📂 ${subName} ${lockBtnHtml}`;
-        
-        const cont = document.getElementById("subSubjectChaptersList");
-        if(chapters.length === 0) cont.innerHTML = `<div style="color:white;text-align:center;">No Items</div>`;
-        else {
-            let h = "";
-            chapters.forEach(ch => { 
-                let display = getItemDisplayDetails(ch.itemType, contentType);
-                h += `<div class="chapter-link-card">
-                    <div class="chapter-link-text">
-                        <span style="display:inline-block; vertical-align:middle; margin-right:8px; font-size:1.1rem;">${display.icon}</span> 
-                        <strong style="display:inline; vertical-align:middle; font-size:0.95rem; word-break:break-word;">${escapeHtml(ch.name)}</strong>
-                    </div>
-                    <div class="compact-item-actions">
-                        <button class="action-btn btn-open" data-url="${escapeHtml(ch.url)}" data-ts="${ch.timestamp || ''}"><i class="${display.btnIcon}"></i> Open</button>
-                        <button class="action-btn btn-edit ${isAdminLoggedIn ? 'show-admin' : ''}" onclick="startEdit('${ch.id}', '${parent}', '${subName}', '${escapeHtml(ch.name)}', '${escapeHtml(ch.url)}', '${ch.itemType || 'default'}')">Edit</button>
-                        <button class="action-btn btn-delete ${isAdminLoggedIn ? 'show-admin' : ''}" onclick="deleteItem('${ch.id}', '${parent}', '${subName}')">Delete</button>
-                    </div>
-                </div>`; 
-            });
-            cont.innerHTML = h;
-            attachOpenButtons(cont);
-        }
-        document.getElementById("subSubjectPage").classList.add("active");
-        document.getElementById("subjectPage").classList.remove("active");
-    }
-
-    function renderCompactMasterList(searchQuery = "", dateQuery = "") {
-        const container = document.getElementById("masterCompactList");
-        allGlobalItems = [];
-        
-        getAllSections().forEach(sec => {
-            const secData = getSectionData(sec.key);
-            if(secData.isLocked === true) return; 
-            if(secData.type === "normal") secData.data.forEach(ch => allGlobalItems.push({ ...ch, label: sec.key, sKey: sec.key, folderContentType: secData.contentType }));
-            else for(let sub in secData.data) secData.data[sub].forEach(ch => allGlobalItems.push({ ...ch, label: `${sec.key} (${sub})`, sKey: sec.key, subName: sub, folderContentType: secData.contentType }));
-        });
-
-        let filteredItems = allGlobalItems;
-        if (dateQuery) {
-            let selectedDateStr = new Date(dateQuery).toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'}); 
-            filteredItems = filteredItems.filter(item => {
-                if(!item.timestamp) return false;
-                let itemDateStr = new Date(item.timestamp).toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
-                return itemDateStr === selectedDateStr;
-            });
-        }
-
-        if(searchQuery.trim() !== "") {
-            let q = searchQuery.toLowerCase();
-            let extendedQuery = q;
-            for(let key in hinglishDict) { if(q.includes(key)) extendedQuery += " " + hinglishDict[key]; }
-            let searchParts = extendedQuery.split(" ").filter(p => p.trim() !== "");
-            filteredItems = filteredItems.filter(item => {
-                let targetText = (item.name + " " + item.label).toLowerCase();
-                return searchParts.some(part => targetText.includes(part));
-            });
-            document.getElementById("listTitle").innerHTML = `<i class="fas fa-search"></i> Search Results (${filteredItems.length})`;
-        } else {
-            document.getElementById("listTitle").innerHTML = `<i class="fas fa-layer-group"></i> All Lists (Compact View)`;
-        }
-
-        if(filteredItems.length === 0) { container.innerHTML = `<div style="color:#94a3b8; text-align:center; padding: 20px;">📭 No Results Found</div>`; return; }
-        
-        let h = "";
-        filteredItems.forEach(ch => {
-            let display = getItemDisplayDetails(ch.itemType, ch.folderContentType);
-            h += `<div class="compact-chapter-item">
-                    <div class="compact-item-text">
-                        <span class="compact-badge">${display.icon} ${escapeHtml(ch.label)}</span> 
-                        <strong style="display:inline-block; margin-left:5px; vertical-align:middle;">${escapeHtml(ch.name)}</strong>
-                    </div>
-                    <div class="compact-item-actions">
-                        <button class="action-btn btn-open" data-url="${escapeHtml(ch.url)}" data-ts="${ch.timestamp || ''}"><i class="${display.btnIcon}"></i> Open</button> 
-                        <button class="action-btn btn-edit ${isAdminLoggedIn ? 'show-admin' : ''}" onclick="startEdit('${ch.id}', '${ch.sKey}', '${ch.subName||''}', '${escapeHtml(ch.name)}', '${escapeHtml(ch.url)}', '${ch.itemType || 'default'}')">Edit</button>
-                        <button class="action-btn btn-delete ${isAdminLoggedIn ? 'show-admin' : ''}" onclick="deleteItem('${ch.id}', '${ch.sKey}', '${ch.subName||''}')">Delete</button>
-                    </div>
-                  </div>`;
-        });
-        
-        if(searchQuery === "" && dateQuery === "" && filteredItems.length > 3) { container.innerHTML = `<div>${h}${h}</div>`; } 
-        else { container.innerHTML = `<div>${h}</div>`; }
-        attachOpenButtons(container);
-    }
-
-    function attachOpenButtons(container) { 
-        container.querySelectorAll(".btn-open").forEach(btn => btn.addEventListener("click", (e) => { 
-            e.stopPropagation(); 
-            let url = btn.getAttribute("data-url");
-            let ts = btn.getAttribute("data-ts");
-            
-            if (ts && ts !== "undefined" && ts !== "") {
-                let popup = document.getElementById("quickDatePopup");
-                document.getElementById("quickDatePopupText").innerText = formatTime(parseInt(ts));
-                popup.style.display = "block";
-                setTimeout(() => { popup.style.opacity = "1"; popup.style.transform = "translate(-50%, -50%) scale(1)"; }, 10);
-                setTimeout(() => {
-                    popup.style.opacity = "0"; popup.style.transform = "translate(-50%, -50%) scale(0.8)";
-                    setTimeout(() => { popup.style.display = "none"; window.open(url, "_blank"); }, 200);
-                }, 800);
-            } else { window.open(url, "_blank"); }
-        })); 
-    }
-
-    async function deleteItem(id, secKey, sub) {
-        if(!confirm("Are you sure you want to delete this?")) return;
-        const { type, data } = getSectionData(secKey);
-        if(type === "normal") { 
-            let nd = data.filter(c => c.id !== id); 
-            if(DEFAULT_SECTIONS.includes(secKey)) appData[secKey] = nd; else appData.customSections[secKey].data = nd; 
-        } else { 
-            let arr = data[sub]; 
-            if(arr) { 
-                let narr = arr.filter(c => c.id !== id); 
-                if(narr.length === 0) delete data[sub]; else data[sub] = narr; 
-                if(DEFAULT_SECTIONS.includes(secKey)) appData[secKey] = data; else appData.customSections[secKey].data = data; 
-            } 
-        }
-        await saveData(); fullRefresh(); showToast("Item Deleted", "info");
-        if (isPageActive === "subject") openSubject(currentOpenSubject, true);
-        else if (isPageActive === "subSubject") openSubSubject(currentOpenSubject, currentOpenSubSubject, true);
-    }
-
-    function toggleGkField() { 
-        let sec = document.getElementById("adminSubjectSelect").value; 
-        let { type, data } = getSectionData(sec); 
-        let subGroup = document.getElementById("gkSubSubjectGroup");
-        if(type === "nested") {
-            subGroup.style.display = "block";
-            let subSelect = document.getElementById("adminSubSubjectSelect");
-            let subs = Object.keys(data || {});
-            let opts = `<option value="">-- पुराना फोल्डर चुनें --</option>`;
-            subs.forEach(s => { opts += `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`; });
-            opts += `<option value="__new__">➕ नया सब-फोल्डर बनाएं</option>`;
-            subSelect.innerHTML = opts; handleSubSelectChange();
-        } else { subGroup.style.display = "none"; }
-    }
-
-    function handleSubSelectChange() {
-        let val = document.getElementById("adminSubSubjectSelect").value;
-        let textInput = document.getElementById("gkSubSubjectName");
-        if(val === "__new__") { textInput.style.display = "block"; textInput.value = ""; } 
-        else { textInput.style.display = "none"; textInput.value = val; }
-    }
-    
-    document.getElementById("adminSubjectSelect").addEventListener("change", toggleGkField);
-    document.getElementById("adminSubSubjectSelect").addEventListener("change", handleSubSelectChange);
-
-    function startEdit(id, section, subName, name, url, itemType) {
-        editMode = true; editItemDetails = { id: id, section: section, subName: subName }; 
-        document.getElementById("adminSubjectSelect").value = section; toggleGkField();
-        if(subName) { setTimeout(() => { document.getElementById("adminSubSubjectSelect").value = subName; handleSubSelectChange(); }, 120); }
-        document.getElementById("adminChapterName").value = name; document.getElementById("adminPdfUrl").value = url; document.getElementById("adminItemType").value = itemType || "default"; 
-        
-        let addBtn = document.getElementById("addChapterAdminBtn");
-        addBtn.innerHTML = `<i class="fas fa-save"></i> Update Data`; addBtn.style.background = "#2563eb"; 
-        document.getElementById("cancelEditBtn").style.display = "block"; document.getElementById("adminFormTitle").innerHTML = `<i class="fas fa-edit"></i> Edit Data`;
-        document.getElementById("adminPanel").classList.add("show-admin");
-        window.location.hash = ""; setTimeout(() => window.scrollTo({ top: document.getElementById("adminPanel").offsetTop, behavior: 'smooth' }), 300);
-    }
-
-    document.getElementById("cancelEditBtn").addEventListener("click", resetEditMode);
-
-    function resetEditMode() {
-        editMode = false; editItemDetails = {};
-        document.getElementById("adminChapterName").value = ""; document.getElementById("adminPdfUrl").value = ""; document.getElementById("gkSubSubjectName").value = ""; document.getElementById("adminItemType").value = "default";
-        let addBtn = document.getElementById("addChapterAdminBtn");
-        addBtn.innerHTML = `<i class="fas fa-plus"></i> Add Item`; addBtn.style.background = "#f97316";
-        document.getElementById("cancelEditBtn").style.display = "none"; document.getElementById("adminFormTitle").innerHTML = `<i class="fas fa-plus-circle"></i> Add New Data`;
-    }
-
-    let adminUnlockTargetKey = null;
-
-    document.getElementById("updateLockBtn").addEventListener("click", async () => {
-        if(!isAdminLoggedIn) return;
-        let secKey = document.getElementById("adminLockSelect").value;
-        let pass = document.getElementById("adminLockPassword").value.trim();
-        if(pass === "") { showToast("Please enter a password to lock!", "error"); return; }
-        if(!appData.customSections[secKey]) appData.customSections[secKey] = {};
-        appData.customSections[secKey].isLocked = true; appData.customSections[secKey].password = btoa(pass); 
-        showToast(`🔒 "${secKey}" Locked Successfully!`, "success"); await saveData(); fullRefresh(); document.getElementById("adminLockPassword").value = "";
-    });
-
-    document.getElementById("unlockFolderBtn").addEventListener("click", async () => {
-        if(!isAdminLoggedIn) return;
-        let secKey = document.getElementById("adminLockSelect").value;
-        if(!appData.customSections[secKey] || !appData.customSections[secKey].isLocked) { showToast(`"${secKey}" is already unlocked!`, "info"); return; }
-        adminUnlockTargetKey = secKey; document.getElementById("adminUnlockPassInput").value = ""; document.getElementById("adminUnlockModal").classList.add("active"); window.location.hash = "adminUnlock";
-    });
-
-    document.getElementById("cancelAdminUnlockBtn").addEventListener("click", () => { history.back(); });
-
-    document.getElementById("submitAdminUnlockBtn").addEventListener("click", async () => {
-        let pass = document.getElementById("adminUnlockPassInput").value;
-        let secData = appData.customSections[adminUnlockTargetKey];
-        if (btoa(pass) !== secData.password) { showToast("❌ Incorrect Password!", "error"); return; }
-        secData.isLocked = false; secData.password = "";
-        document.getElementById("adminUnlockModal").classList.remove("active"); history.replaceState(null, null, window.location.pathname); 
-        showToast(`🔓 "${adminUnlockTargetKey}" Permanently Unlocked!`, "success"); await saveData(); fullRefresh();
-    });
-
-    function updateAdminSelect() {
-        const sel = document.getElementById("adminSubjectSelect"); const lockSel = document.getElementById("adminLockSelect"); 
-        let opts = ""; getAllSections().forEach(s => { opts += `<option value="${s.key}">${s.key}</option>`; });
-        sel.innerHTML = opts; lockSel.innerHTML = opts; toggleGkField();
-    }
-
-    document.getElementById("scanDriveBtn").addEventListener("click", async function() {
-        this.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Accessing & Scanning Drive Folder...`; this.disabled = true;
-        try {
-            let res = await fetch(`${SCRIPT_URL}?action=scanLatestDriveFile`);
-            let json = await res.json();
-            if(json.success && json.file) {
-                document.getElementById("adminChapterName").value = json.file.name; document.getElementById("adminPdfUrl").value = json.file.url;
-                showToast("Latest File Auto-Filled! You can edit.", "success");
-            } else { showToast("Drive Scan Failed: " + (json.error || "No files found"), "error"); }
-        } catch(e) { showToast("Network Error connecting to cloud API!", "error"); }
-        this.innerHTML = `<i class="fas fa-cloud-download-alt"></i> Fetch Latest File from Drive`; this.disabled = false;
-    });
-
-    async function addChapter() {
-        if(!isAdminLoggedIn) return showToast("Please login first!", "error");
-        let name = document.getElementById("adminChapterName").value.trim(), url = document.getElementById("adminPdfUrl").value.trim(), section = document.getElementById("adminSubjectSelect").value;
-        let itemType = document.getElementById("adminItemType").value; 
-        if(!name || !url) return showToast("Please fill all details!", "error");
-        if(!url.startsWith("http")) url = "https://" + url;
-        
-        const { type, data } = getSectionData(section);
-        let subN = document.getElementById("gkSubSubjectName").value.trim();
-        let timestamp = Date.now(); 
-        
-        if(editMode) {
-            let oldSec = editItemDetails.section; let oldSub = editItemDetails.subName;
-            let oldSecData = getSectionData(oldSec);
-            let oldList = oldSecData.type === "nested" ? oldSecData.data[oldSub] : oldSecData.data;
-
-            if(oldList) {
-                let itemIndex = oldList.findIndex(i => i.id === editItemDetails.id);
-                if(itemIndex > -1) {
-                    let itemToUpdate = oldList[itemIndex];
-                    itemToUpdate.name = name; itemToUpdate.url = url; itemToUpdate.itemType = itemType;
-                    if(oldSec !== section || (type === "nested" && oldSub !== subN)) {
-                        oldList.splice(itemIndex, 1); 
-                        if(type === "nested") {
-                            if(!subN) return showToast("Sub-Section Name Required!", "error");
-                            if(!data[subN]) data[subN] = [];
-                            data[subN].push(itemToUpdate);
-                        } else { data.push(itemToUpdate); }
-                    }
-                }
-            }
-            await saveData(); fullRefresh(); resetEditMode(); showToast("Updated Successfully!", "success"); return;
-        }
-
-        if(type === "nested") {
-            if(!subN) return showToast("Sub-Section Name Required!", "error");
-            if(!data[subN]) data[subN] = [];
-            data[subN].push({ id: genId(), name, url, itemType, timestamp });
-            if(DEFAULT_SECTIONS.includes(section)) appData[section] = data; else appData.customSections[section].data = data;
-        } else {
-            data.push({ id: genId(), name, url, itemType, timestamp });
-            if(DEFAULT_SECTIONS.includes(section)) appData[section] = data; else appData.customSections[section].data = data;
-        }
-        
-        const secDataCheck = getSectionData(section);
-        if(!secDataCheck.isLocked) { addNotification(section, name); triggerNotificationAlert(); }
-        await saveData(); fullRefresh(); showToast("Saved Successfully!", "success");
-        document.getElementById("adminChapterName").value = ""; document.getElementById("adminPdfUrl").value = ""; document.getElementById("gkSubSubjectName").value = "";
-    }
-    
-    async function createNewSection() {
-        if(!isAdminLoggedIn) return;
-        let name = document.getElementById("newSectionName").value.trim();
-        if(!name) return showToast("Name is required!", "error");
-        if(DEFAULT_SECTIONS.includes(name) || appData.customSections[name]) return showToast("Folder already exists!", "error");
-        
-        let type = document.getElementById("newSectionType").value; let cType = document.getElementById("newSectionContentType").value; 
-        let cIcon = document.getElementById("newSectionIcon").value.trim(); let cPass = document.getElementById("newSectionPassword").value.trim(); 
-        let encodedPass = cPass !== "" ? btoa(cPass) : "";
-
-        if(cIcon.includes("postimg.cc/") && !cIcon.includes("i.postimg.cc/")) {
-            let parts = cIcon.split("/"); let id = parts[parts.length-1];
-            cIcon = `https://i.postimg.cc/${id}/${id}.png`; 
-        }
-        
-        let newSecData = { type: type, contentType: cType, customIcon: cIcon, isLocked: encodedPass !== "", password: encodedPass, data: type==="normal"?[]:{} };
-        appData.customSections[name] = newSecData;
-        await saveData(); fullRefresh(); 
-        document.getElementById("newSectionName").value = ""; document.getElementById("newSectionIcon").value = ""; document.getElementById("newSectionPassword").value = ""; 
-        showToast(cPass ? `🔒 Private Folder Created!` : `Folder Created!`, "success");
-    }
-    
-    function renderManageSections() {
-        const cont = document.getElementById("manageSectionsList");
-        let html = "";
-        getAllSections().forEach(sec => {
-            if(sec.isDefault) html += `<span style="background:#334155; padding:4px 12px; border-radius:4px;">🔒 ${sec.key}</span>`;
-            else html += `<span style="background:#991b1b; padding:4px 12px; border-radius:4px;">${sec.key} ${sec.isLocked?'(🔒)':''} <button class="delete-section-btn" data-sec="${sec.key}" style="background:black; color:white; border:none; margin-left:6px; padding: 2px 6px; cursor:pointer; border-radius:2px;">Delete</button></span>`;
-        });
-        cont.innerHTML = html;
-        document.querySelectorAll(".delete-section-btn").forEach(btn => btn.addEventListener("click", async () => { let s = btn.getAttribute("data-sec"); if(confirm(`Delete "${s}"? All data inside will be lost!`)) { delete appData.customSections[s]; await saveData(); fullRefresh(); showToast("Folder Deleted", "info");} }));
-    }
-    
-    function fullRefresh() { 
-        renderHomeCards(); renderCompactMasterList(document.getElementById("globalSearchInput").value, document.getElementById("dateSearchInput").value); 
-        updateAdminSelect(); renderManageSections(); 
-        if(isAdminLoggedIn) document.getElementById("adminPanel").classList.add("show-admin"); else document.getElementById("adminPanel").classList.remove("show-admin"); 
-    }
-
-    const modal = document.getElementById("loginModal");
-    function clearLoginFields() { document.getElementById("loginUserId").value = ""; document.getElementById("loginPassword").value = ""; }
-    
-    document.getElementById("adminLockBtn").addEventListener("click", () => {
-        if(isAdminLoggedIn){ isAdminLoggedIn=false; fullRefresh(); showToast("Logged Out Successfully", "info"); clearLoginFields(); resetEditMode(); }
-        else { clearLoginFields(); window.location.hash = "login"; modal.classList.add("active"); }
-    });
-    
-    document.getElementById("submitLoginBtn").addEventListener("click", () => {
-        let u = document.getElementById("loginUserId").value.trim(), p = document.getElementById("loginPassword").value.trim();
-        if(btoa(u) === ENCODED_ID && btoa(p) === ENCODED_PW){ isAdminLoggedIn=true; history.back(); fullRefresh(); showToast("Login Successful!", "success"); clearLoginFields(); } 
-        else { showToast("Incorrect ID or Password!", "error"); }
-    });
-    
-    document.getElementById("logoutAdminBtn")?.addEventListener("click", () => { isAdminLoggedIn=false; fullRefresh(); showToast("Logged Out", "info"); clearLoginFields(); resetEditMode(); });
-    
-    window.addEventListener("hashchange", () => {
-        let hash = window.location.hash;
-        document.getElementById("subjectPage").classList.remove("active"); document.getElementById("subSubjectPage").classList.remove("active");
-        document.getElementById("loginModal").classList.remove("active"); document.getElementById("passwordModal").classList.remove("active");
-        document.getElementById("adminUnlockModal").classList.remove("active"); document.getElementById("notifModal").classList.remove("active");
-        
-        if(hash === "") {
-            isPageActive = "home"; unlockedSession = {}; document.getElementById("dateSearchInput").value = ""; document.getElementById("clearDateBtn").style.display = "none";
-            renderCompactMasterList(document.getElementById("globalSearchInput").value, ""); checkUnreadNotifications(); 
-        } else if(hash === "#subject") { document.getElementById("subjectPage").classList.add("active"); isPageActive = "subject";
-        } else if(hash === "#subsubject") { document.getElementById("subSubjectPage").classList.add("active"); isPageActive = "subSubject";
-        } else if(hash === "#login") { document.getElementById("loginModal").classList.add("active");
-        } else if(hash === "#password") { document.getElementById("passwordModal").classList.add("active");
-        } else if(hash === "#adminUnlock") { document.getElementById("adminUnlockModal").classList.add("active");
-        } else if(hash === "#notifications") { document.getElementById("notifModal").classList.add("active"); checkUnreadNotifications(); }
-    });
-
-    document.getElementById("closeLoginBtn").addEventListener("click", () => { history.back(); });
-    document.getElementById("backHomeBtn").addEventListener("click", () => { history.back(); });
-    document.getElementById("backToSubjectsBtn").addEventListener("click", () => { history.back(); });
-    document.getElementById("addChapterAdminBtn").addEventListener("click", addChapter);
-    document.getElementById("createSectionBtn").addEventListener("click", createNewSection);
-    
-    loadData(); 
-</script>
-
-<!-- 🆕 Firebase Live Support Logic with Notification Trigger via Netlify/FCM -->
 <script type="module">
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./firebase-messaging-sw.js')
+        .then((registration) => { console.log('Service Worker Registered'); })
+        .catch((err) => { console.log('Service Worker Registration Failed', err); });
+    }
+
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-    import { getDatabase, ref, get, push, onValue, update, onDisconnect, off, remove, set } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+    import { getDatabase, ref, set, push, onValue, serverTimestamp, update, onDisconnect, off, remove, get } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+    import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-messaging.js"; 
 
     const firebaseConfig = {
         apiKey: "AIzaSyBUPIULkKxZx0d7sX6kag2Fa-nmkgjnDA8",
@@ -1370,13 +265,87 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
-    let activeSessionKey = null;
-    let studentTypingTimer;
+    const messaging = getMessaging(app); 
     
+    let currentKey = null;
+    let typingTimer;
     let isSending = false;
     let currentMessagesRef = null;
     let currentStatusRef = null;
     let replyingToData = null;
+    const ADMIN_PASSWORD = "Ankush@2026";
+    
+    // --- 🆕 VISIBILITY LISTENER TO DROP STATUS TO OFFLINE WHEN MINIMIZED ---
+    document.addEventListener('visibilitychange', () => {
+        if(currentKey) {
+            if (document.hidden) {
+                update(ref(db, 'support_keys/' + currentKey), { admin_status: 'offline', admin_typing: false });
+            } else {
+                update(ref(db, 'support_keys/' + currentKey), { admin_status: 'online' });
+            }
+        }
+    });
+
+    // --- MOBILE UI LOGIC ---
+    document.getElementById("mobileBackBtn").addEventListener("click", () => {
+        closeAdminChatUI();
+    });
+
+    // --- PWA INSTALLATION LOGIC ---
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        document.getElementById('installAppBtn').style.display = 'block';
+    });
+
+    document.getElementById('installAppBtn').addEventListener('click', async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') { document.getElementById('installAppBtn').style.display = 'none'; }
+            deferredPrompt = null;
+        }
+    });
+
+    // --- PUSH NOTIFICATION PERMISSION ---
+    async function requestNotificationPermission() {
+        try {
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                const token = await getToken(messaging, { vapidKey: 'BLPE1H3ykDX9nLIOIUQoDDxkEfGlJC4JUZseJbh2E2H6ewQ0749sEs0TXkYyupmJYrEMwCq7nv1gLk5hMjo1ClM' });
+                if (!token) return;
+
+                const existingSnap = await get(ref(db, 'admin_settings/fcm_tokens'));
+                const existingTokens = existingSnap.exists() ? Object.values(existingSnap.val()) : [];
+                if (!existingTokens.includes(token)) {
+                    push(ref(db, 'admin_settings/fcm_tokens'), token);
+                }
+            }
+        } catch(err) { console.log('Notification Err:', err); }
+    }
+
+    // --- BACKGROUND / LOCAL NOTIFICATION LISTENER ---
+    let initAlert = true;
+    onValue(ref(db, 'admin_alerts/latest'), (snapshot) => {
+        if(initAlert) { initAlert = false; return; }
+        const data = snapshot.val();
+        
+        if(data && (document.hidden || !document.hasFocus())) {
+            let title = data.type === 'online' ? `Student Online (Key: ${data.key})` : `New Message (Key: ${data.key})`;
+            let body = data.type === 'online' ? "Student ne chat open ki hai." : (data.text || "Media file received.");
+            
+            if (Notification.permission === 'granted') {
+                navigator.serviceWorker.ready.then(function(registration) {
+                    registration.showNotification(title, {
+                        body: body,
+                        icon: "https://cdn-icons-png.flaticon.com/512/8280/8280802.png",
+                        vibrate: [200, 100, 200, 100, 200]
+                    });
+                });
+            }
+        }
+    });
 
     // --- WEBRTC CALLING VARIABLES ---
     let localStream;
@@ -1398,25 +367,14 @@
         ]
     };
 
-    // 🆕 VISIBILITY LISTENER TO DROP STATUS TO OFFLINE WHEN MINIMIZED
-    document.addEventListener('visibilitychange', () => {
-        if(activeSessionKey) {
-            if (document.hidden) {
-                update(ref(db, 'support_keys/' + activeSessionKey), { student_status: 'offline', student_typing: false });
-            } else {
-                update(ref(db, 'support_keys/' + activeSessionKey), { student_status: 'online' });
-            }
-        }
-    });
-    
     function escapeHtml(str) { return str.replace(/[&<>]/g, m => m=='&'?'&amp;':m=='<'?'&lt;':'&gt;'); }
 
     window.setReply = function(msgId, textSnippet, sender) {
         replyingToData = { id: msgId, text: textSnippet, sender: sender };
         document.getElementById("replyPreviewBox").style.display = "block";
-        document.getElementById("replyPreviewName").innerText = sender === 'student' ? 'Replying to Yourself' : 'Replying to Admin';
+        document.getElementById("replyPreviewName").innerText = sender === 'admin' ? 'Replying to Yourself' : 'Replying to Student';
         document.getElementById("replyPreviewText").innerText = textSnippet.substring(0, 60) + (textSnippet.length > 60 ? "..." : "");
-        document.getElementById("studentMsgInput").focus();
+        document.getElementById("adminMsgInput").focus();
     };
 
     window.cancelReply = function() {
@@ -1426,8 +384,8 @@
     };
 
     window.deleteMessage = function(msgId) {
-        if(!activeSessionKey) return;
-        if(confirm("Delete this message permanently?")) { remove(ref(db, `messages/${activeSessionKey}/${msgId}`)); }
+        if(!currentKey) return;
+        if(confirm("Delete this message permanently?")) { remove(ref(db, `messages/${currentKey}/${msgId}`)); }
     };
 
     // --- WEBRTC MEDIA CONTROLS ---
@@ -1479,15 +437,15 @@
     });
 
     // --- WEBRTC CALL LOGIC START ---
-    document.getElementById("studentCallBtn").addEventListener("click", () => { if(activeSessionKey) initiateCall('audio'); });
-    document.getElementById("studentVideoCallBtn").addEventListener("click", () => { if(activeSessionKey) initiateCall('video'); });
+    document.getElementById("adminCallBtn").addEventListener("click", () => { if(currentKey) initiateCall('audio'); });
+    document.getElementById("adminVideoCallBtn").addEventListener("click", () => { if(currentKey) initiateCall('video'); });
 
     async function initiateCall(callType) {
         try {
             isVideoCall = (callType === 'video');
             localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: isVideoCall });
             
-            setupCallUI(isVideoCall, "Calling Admin...");
+            setupCallUI(isVideoCall, "Calling Student...");
 
             peerConnection = new RTCPeerConnection(pcConfig);
             localStream.getTracks().forEach(track => { peerConnection.addTrack(track, localStream); });
@@ -1503,29 +461,29 @@
             };
 
             peerConnection.onicecandidate = event => {
-                if (event.candidate) { push(ref(db, `calls/${activeSessionKey}/iceCandidates/student`), event.candidate.toJSON()); }
+                if (event.candidate) { push(ref(db, `calls/${currentKey}/iceCandidates/admin`), event.candidate.toJSON()); }
             };
 
             const offerDescription = await peerConnection.createOffer();
             await peerConnection.setLocalDescription(offerDescription);
 
             const callConfig = {
-                caller: 'student',
+                caller: 'admin',
                 status: 'calling',
                 callType: callType,
                 offer: { type: offerDescription.type, sdp: offerDescription.sdp }
             };
 
-            await set(ref(db, `calls/${activeSessionKey}`), callConfig);
+            await set(ref(db, `calls/${currentKey}`), callConfig);
 
-            onValue(ref(db, `calls/${activeSessionKey}`), async (snapshot) => {
+            onValue(ref(db, `calls/${currentKey}`), async (snapshot) => {
                 const data = snapshot.val();
                 if (!data) return;
 
                 if (data.status === 'ongoing' && data.answer && !peerConnection.currentRemoteDescription) {
                     document.getElementById("callStatusText").innerText = isVideoCall ? "" : "In Call (Live)";
-                    document.getElementById("muteCallBtn").style.display = "inline-block";
-                    document.getElementById("speakerCallBtn").style.display = "inline-block"; 
+                    document.getElementById("muteCallBtn").style.display = "inline-block"; 
+                    document.getElementById("speakerCallBtn").style.display = "inline-block";
                     if(isVideoCall) document.getElementById("videoToggleBtn").style.display = "inline-block";
                     startCallTimer();
                     const answerDescription = new RTCSessionDescription(data.answer);
@@ -1533,7 +491,7 @@
                 }
             });
 
-            iceCandidatesRef = ref(db, `calls/${activeSessionKey}/iceCandidates/admin`);
+            iceCandidatesRef = ref(db, `calls/${currentKey}/iceCandidates/student`);
             onValue(iceCandidatesRef, snapshot => {
                 snapshot.forEach(childSnapshot => {
                     const candidate = new RTCIceCandidate(childSnapshot.val());
@@ -1569,7 +527,7 @@
             };
 
             peerConnection.onicecandidate = event => {
-                if (event.candidate) { push(ref(db, `calls/${activeSessionKey}/iceCandidates/student`), event.candidate.toJSON()); }
+                if (event.candidate) { push(ref(db, `calls/${currentKey}/iceCandidates/student`), event.candidate.toJSON()); }
             };
 
             const offerDescription = new RTCSessionDescription(offerData);
@@ -1579,13 +537,13 @@
             await peerConnection.setLocalDescription(answerDescription);
 
             const callConfig = {
-                caller: 'admin',
+                caller: 'student',
                 status: 'ongoing',
                 callType: callType,
                 answer: { type: answerDescription.type, sdp: answerDescription.sdp }
             };
 
-            await update(ref(db, `calls/${activeSessionKey}`), callConfig);
+            await update(ref(db, `calls/${currentKey}`), callConfig);
             
             document.getElementById("callStatusText").innerText = isVideoCall ? "" : "In Call (Live)";
             document.getElementById("callPulse").style.borderColor = "#25D366";
@@ -1594,7 +552,7 @@
             if(isVideoCall) document.getElementById("videoToggleBtn").style.display = "inline-block";
             startCallTimer();
 
-            iceCandidatesRef = ref(db, `calls/${activeSessionKey}/iceCandidates/admin`);
+            iceCandidatesRef = ref(db, `calls/${currentKey}/iceCandidates/student`);
             onValue(iceCandidatesRef, snapshot => {
                 snapshot.forEach(childSnapshot => {
                     const candidate = new RTCIceCandidate(childSnapshot.val());
@@ -1630,9 +588,28 @@
         }
     }
 
+    // --- CLEAN CLOSING FUNCTIONS ---
+    function closeAdminChatUI() {
+        if(currentKey) { update(ref(db, 'support_keys/' + currentKey), { admin_status: 'offline', admin_typing: false }); }
+        currentKey = null;
+        
+        if(currentMessagesRef) { off(currentMessagesRef); currentMessagesRef = null; }
+        if(currentStatusRef) { off(currentStatusRef); currentStatusRef = null; }
+        if(callStateRef) { off(callStateRef); callStateRef = null; }
+
+        document.getElementById("mainChatArea").classList.remove("active-mobile");
+        document.getElementById("chatTitleText").innerHTML = `<span><i class="fas fa-comments"></i> Select a key</span>`;
+        document.getElementById("studentStatus").innerHTML = "";
+        document.getElementById("chatMessages").innerHTML = `<div class="empty-chat"><i class="fas fa-inbox"></i><p>Koi chat select nahi ki gayi hai.</p></div>`;
+        document.getElementById("chatBottomWrapper").style.display = "none";
+        document.getElementById("headerActionsBlock").style.display = "none";
+        document.querySelectorAll(".key-item").forEach(el => el.classList.remove("active"));
+    }
+
     document.getElementById("endCallBtn").addEventListener("click", () => {
-        if(activeSessionKey) remove(ref(db, `calls/${activeSessionKey}`));
+        if(currentKey) remove(ref(db, `calls/${currentKey}`));
         endCallLocal();
+        closeAdminChatUI();
     });
 
     function endCallLocal() {
@@ -1662,9 +639,9 @@
         document.getElementById("localVideo").srcObject = null;
         document.getElementById("remoteAudio").volume = 1.0;
         document.getElementById("remoteVideoCall").volume = 1.0;
-        
+
         if (wasInCall) {
-            document.getElementById("lsCloseBtn").click();
+            closeAdminChatUI();
         }
     }
 
@@ -1681,163 +658,125 @@
     }
     // --- WEBRTC CALL LOGIC END ---
 
-    // EMOJI LOGIC
+    // Emojis logic
     const emojis = ["😀","😃","😄","😁","😆","😅","😂","🤣","😊","😇","🙂","🙃","😉","😌","😍","🥰","😘","😋","😛","😝","😜","🤪","🤓","😎","🤩","🥳","😏","😒","😞","😔","😟","😕","🙁","☹️","😣","😖","😫","😩","🥺","😢","😭","😤","😠","😡","🤯","😳","😱","😨","😰","😥","😓","🤗","🤔","🤭","🤫","😶","😐","😑","😬","🙄","😯","😦","😧","😮","😲","🥱","😴","🤤","😪","😵","🤐","🥴","🤢","🤮","🤧","😷","🤒","🤕","🤑","🤠","😈","👿","👻","💀","👽","👾","🤖","🎃","👍","👎","👏","🙌","👐","🤲","🤝","🙏","✌️","🤞","👆","👇","👈","👉","🔥","💯","❤️","💔"];
-    const emojiPicker = document.getElementById("studentEmojiPicker");
-    const msgInput = document.getElementById("studentMsgInput");
-
+    const emojiPicker = document.getElementById("adminEmojiPicker");
+    const msgInput = document.getElementById("adminMsgInput");
     emojis.forEach(e => {
         let span = document.createElement("span"); span.innerText = e;
         span.onclick = () => { msgInput.value += e; msgInput.focus(); };
         emojiPicker.appendChild(span);
     });
-
-    document.getElementById("studentEmojiBtn").addEventListener("click", () => { emojiPicker.classList.toggle("active"); });
+    document.getElementById("adminEmojiBtn").addEventListener("click", () => emojiPicker.classList.toggle("active"));
     document.addEventListener("click", (e) => {
-        if (!e.target.closest("#studentEmojiBtn") && !e.target.closest("#studentEmojiPicker")) { emojiPicker.classList.remove("active"); }
+        if (!e.target.closest("#adminEmojiBtn") && !e.target.closest("#adminEmojiPicker")) {
+            emojiPicker.classList.remove("active");
+        }
     });
 
-    // CLEAR CHAT
-    document.getElementById("studentClearChatBtn").addEventListener("click", () => {
-        if(!activeSessionKey) return;
-        let confirmClear = confirm("Kya aap sach mein saari chat delete karna chahte hain?");
-        if(confirmClear) {
-            remove(ref(db, 'messages/' + activeSessionKey)).then(() => {
-                document.getElementById("studentChatMessages").innerHTML = `<div class="empty-chat"><i class="fas fa-broom"></i><p>Chat cleared successfully!</p></div>`;
+    document.getElementById("adminClearChatBtn").addEventListener("click", () => {
+        if(!currentKey) return;
+        if(confirm("Kya aap sach mein dono taraf se saari chat delete karna chahte hain?")) {
+            remove(ref(db, 'messages/' + currentKey)).then(() => {
+                document.getElementById("chatMessages").innerHTML = `<div class="empty-chat"><i class="fas fa-broom"></i><p>Chat cleared successfully!</p></div>`;
             });
         }
     });
 
-    // CLOUDINARY MEDIA UPLOAD LOGIC
-    async function uploadToCloudinary(file, loadingBtnElement, originalIconClass) {
+    async function uploadToCloudinary(file, loadingBtnElement, originalIconHtml) {
         if(!file) return;
         if(file.size > 15 * 1024 * 1024) { alert("File size bahut badi hai!"); return; }
-
-        let originalHtml = loadingBtnElement.innerHTML;
         loadingBtnElement.innerHTML = `<i class="fas fa-spinner fa-spin" style="color:#34b7f1;"></i>`;
-        loadingBtnElement.disabled = true;
-        document.getElementById("studentSendBtn").disabled = true;
-
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('upload_preset', UPLOAD_PRESET);
-
+        loadingBtnElement.disabled = true; document.getElementById("adminSendBtn").disabled = true;
+        const formData = new FormData(); formData.append('file', file); formData.append('upload_preset', UPLOAD_PRESET);
         try {
             let response = await fetch(CLOUDINARY_URL, { method: "POST", body: formData });
             let result = await response.json();
-            
             if(result.secure_url) {
-                let msgObj = { sender: 'student', text: "", fileUrl: result.secure_url, fileType: file.type, timestamp: Date.now(), status: 'sent' };
+                let msgObj = { sender: 'admin', text: "", fileUrl: result.secure_url, fileType: file.type, timestamp: Date.now(), status: 'sent' };
                 if(replyingToData) { msgObj.replyTo = replyingToData; window.cancelReply(); }
-                push(ref(db, 'messages/' + activeSessionKey), msgObj);
-                
-                fetch('/.netlify/functions/send-notification', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ key: activeSessionKey, message: '📷 Media file bheji gayi hai', type: 'message' })
-                }).catch(e => console.log(e));
-
+                push(ref(db, 'messages/' + currentKey), msgObj);
             } else { alert("Upload Failed"); }
         } catch(err) { alert("Upload Error!"); }
-        
-        loadingBtnElement.innerHTML = originalHtml;
-        loadingBtnElement.disabled = false;
-        document.getElementById("studentSendBtn").disabled = false;
+        loadingBtnElement.innerHTML = originalIconHtml;
+        loadingBtnElement.disabled = false; document.getElementById("adminSendBtn").disabled = false;
     }
 
-    document.getElementById("studentAttachBtn").addEventListener("click", () => { if(activeSessionKey) document.getElementById("studentFileInput").click(); });
-    document.getElementById("studentFileInput").addEventListener("change", (e) => { uploadToCloudinary(e.target.files[0], document.getElementById("studentAttachBtn"), '<i class="fas fa-paperclip"></i>'); e.target.value = ""; });
-    document.getElementById("studentHeaderCameraBtn").addEventListener("click", () => { if(activeSessionKey) document.getElementById("studentCameraInput").click(); });
-    document.getElementById("studentCameraInput").addEventListener("change", (e) => { uploadToCloudinary(e.target.files[0], document.getElementById("studentHeaderCameraBtn"), '<i class="fas fa-camera"></i>'); e.target.value = ""; });
+    document.getElementById("adminAttachBtn").addEventListener("click", () => { if(currentKey) document.getElementById("adminFileInput").click(); });
+    document.getElementById("adminFileInput").addEventListener("change", (e) => { uploadToCloudinary(e.target.files[0], document.getElementById("adminAttachBtn"), '<i class="fas fa-paperclip"></i>'); e.target.value = ""; });
+    document.getElementById("adminHeaderCameraBtn").addEventListener("click", () => { if(currentKey) document.getElementById("adminCameraInput").click(); });
+    document.getElementById("adminCameraInput").addEventListener("change", (e) => { uploadToCloudinary(e.target.files[0], document.getElementById("adminHeaderCameraBtn"), '<i class="fas fa-camera"></i>'); e.target.value = ""; });
 
-    // 🆕 10-TAP SECRET EMOJI LOGIC
-    let supportTapCount = 0;
-    let supportTapTimer;
-    document.getElementById("secretSupportBtn").addEventListener("click", () => {
-        supportTapCount++;
-        clearTimeout(supportTapTimer);
-        
-        if (supportTapCount >= 10) {
-            supportTapCount = 0; // reset
-            document.getElementById("lsPanel").style.display = "block"; 
-            if(!activeSessionKey) {
-                document.getElementById("studentKeyInput").value = "";
-                document.getElementById("lsKeyEntryArea").style.display = "block";
-                document.getElementById("lsChatArea").style.display = "none";
-                document.getElementById("adminStatusDisplay").style.display = "none";
-                document.getElementById("lsHeaderIcons").style.display = "none";
-                document.getElementById("studentKeyInput").focus();
-            } else {
-                update(ref(db, 'support_keys/' + activeSessionKey), { student_status: 'online' });
-                document.getElementById("lsHeaderIcons").style.display = "flex"; 
-            }
+    document.getElementById("adminLoginBtn").addEventListener("click", tryLogin);
+    document.getElementById("adminPassInput").addEventListener("keydown", (e) => { if (e.key === "Enter") tryLogin(); });
+    document.getElementById("logoutBtn").addEventListener("click", () => { location.reload(); });
+
+    function tryLogin() {
+        if (document.getElementById("adminPassInput").value === ADMIN_PASSWORD) {
+            document.getElementById("loginScreen").style.display = "none";
+            document.getElementById("dashboard").style.display = "flex";
+            loadKeys();
+            requestNotificationPermission(); 
+        } else {
+            document.getElementById("loginErrorMsg").style.display = "block";
         }
-        
-        supportTapTimer = setTimeout(() => { supportTapCount = 0; }, 1500); 
+    }
+
+    document.getElementById("generateKeyBtn").addEventListener("click", () => {
+        let newKey = Math.floor(100000 + Math.random() * 900000).toString();
+        set(ref(db, 'support_keys/' + newKey), {
+            createdAt: serverTimestamp(), status: 'active', admin_status: 'offline', student_status: 'offline', admin_typing: false, student_typing: false
+        }).then(() => { alert(`New Key Generated: ${newKey}`); });
     });
 
-    document.getElementById("lsCloseBtn").addEventListener("click", () => { 
-        document.getElementById("lsPanel").style.display = "none"; 
-        if(activeSessionKey) {
-            update(ref(db, 'support_keys/' + activeSessionKey), { student_status: 'offline', student_typing: false });
-            activeSessionKey = null;
-        }
+    function loadKeys() {
+        onValue(ref(db, 'support_keys'), (snapshot) => {
+            const keysList = document.getElementById("keysList");
+            keysList.innerHTML = "";
+            const data = snapshot.val();
+            if (data) {
+                Object.keys(data).reverse().forEach(key => {
+                    let div = document.createElement("div");
+                    div.className = `key-item ${currentKey === key ? 'active' : ''}`;
+                    let statusDot = data[key].student_status === 'online' ? '<span style="color:#25D366; font-size:0.6rem; margin-left:5px;">🟢</span>' : '';
+                    div.innerHTML = `<i class="fas fa-hashtag"></i> ${key} ${statusDot}`;
+                    div.onclick = () => openChat(key);
+                    keysList.appendChild(div);
+                });
+            } else {
+                keysList.innerHTML = `<p style="text-align:center; color:#94a3b8; margin-top:20px;">No keys generated yet.</p>`;
+            }
+        });
+    }
+
+    function openChat(key) {
+        if(currentKey) { update(ref(db, 'support_keys/' + currentKey), { admin_status: 'offline', admin_typing: false }); }
+
+        currentKey = key;
+        document.getElementById("chatTitleText").innerHTML = `<span><i class="fas fa-hashtag"></i> Key: ${key}</span>`;
+        document.getElementById("chatBottomWrapper").style.display = "flex";
+        document.getElementById("chatInputArea").style.display = "flex";
+        document.getElementById("headerActionsBlock").style.display = "flex";
+        
+        document.getElementById("mainChatArea").classList.add("active-mobile");
+        
+        window.cancelReply(); 
+        msgInput.focus();
+        
+        document.querySelectorAll(".key-item").forEach(el => el.classList.remove("active"));
+        if(event) event.currentTarget.classList.add("active");
+
+        const msgBox = document.getElementById("chatMessages");
+        const statusBox = document.getElementById("studentStatus");
+
+        const myKeyRef = ref(db, 'support_keys/' + currentKey);
+        update(myKeyRef, { admin_status: 'online' });
+        onDisconnect(myKeyRef).update({ admin_status: 'offline', admin_typing: false });
 
         // 🆕 Ghost Listener Fix
-        if(currentMessagesRef) { off(currentMessagesRef); currentMessagesRef = null; }
-        if(currentStatusRef) { off(currentStatusRef); currentStatusRef = null; }
-        if(callStateRef) { off(callStateRef); callStateRef = null; }
-
-        document.getElementById("studentChatMessages").innerHTML = "";
-        document.getElementById("studentKeyInput").value = ""; 
-        document.getElementById("studentMsgInput").value = ""; 
-        document.getElementById("lsChatArea").style.display = "none";
-        document.getElementById("adminStatusDisplay").style.display = "none";
-        document.getElementById("lsHeaderIcons").style.display = "none";
-        document.getElementById("keyErrorMsg").style.display = "none";
-        document.getElementById("lsKeyEntryArea").style.display = "block";
-        emojiPicker.classList.remove("active");
-        window.cancelReply();
-    });
-
-    document.getElementById("verifyKeyBtn").addEventListener("click", async () => {
-        const key = document.getElementById("studentKeyInput").value.trim();
-        const errorMsg = document.getElementById("keyErrorMsg");
-        if(key.length !== 6) { errorMsg.style.display = "block"; return; }
-
-        const snapshot = await get(ref(db, 'support_keys/' + key));
-        if (snapshot.exists() && snapshot.val().status === 'active') {
-            activeSessionKey = key;
-            document.getElementById("lsKeyEntryArea").style.display = "none";
-            document.getElementById("lsChatArea").style.display = "flex";
-            document.getElementById("adminStatusDisplay").style.display = "block";
-            document.getElementById("lsHeaderIcons").style.display = "flex"; 
-            window.cancelReply();
-            loadStudentChat(key);
-
-            fetch('/.netlify/functions/send-notification', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: key, message: 'Student ne chat shuru ki hai', type: 'new_session' })
-            }).catch(e => console.log(e));
-
-        } else { 
-            errorMsg.style.display = "block"; 
-            document.getElementById("studentKeyInput").value = ""; 
-        }
-    });
-
-    function loadStudentChat(key) {
-        const myKeyRef = ref(db, 'support_keys/' + key);
-        update(myKeyRef, { student_status: 'online' });
-        onDisconnect(myKeyRef).update({ student_status: 'offline', student_typing: false });
-
-        const msgBox = document.getElementById("studentChatMessages");
-        const adminStatusBox = document.getElementById("adminStatusDisplay");
-
         if(currentMessagesRef) off(currentMessagesRef);
         currentMessagesRef = ref(db, 'messages/' + key);
-
+        
         if(currentStatusRef) off(currentStatusRef);
         currentStatusRef = ref(db, 'support_keys/' + key);
 
@@ -1848,22 +787,23 @@
             let overlayVisible = document.getElementById("callOverlay").style.display === "flex";
 
             if(!data) { 
-                if(overlayVisible) { endCallLocal(); document.getElementById("lsCloseBtn").click(); }
+                if(overlayVisible) { endCallLocal(); closeAdminChatUI(); }
                 return; 
             }
-            
-            if(data.caller === 'admin' && data.status === 'calling') {
+            if(data.caller === 'student' && data.status === 'calling') {
                 document.getElementById("callOverlay").style.display = "flex";
                 document.getElementById("callPulse").style.display = "flex";
                 document.getElementById("callPulse").style.borderColor = "#ef4444";
                 document.getElementById("callStatusText").innerText = data.callType === 'video' ? "Incoming Video Call..." : "Incoming Audio Call...";
                 document.getElementById("acceptCallBtn").style.display = "inline-block";
+                
                 document.getElementById("muteCallBtn").style.display = "none";
                 document.getElementById("videoToggleBtn").style.display = "none";
                 document.getElementById("speakerCallBtn").style.display = "none";
+
                 document.getElementById("acceptCallBtn").onclick = () => answerCall(data.offer, data.callType);
             } else if (data.status === 'ended') {
-                if(overlayVisible) { endCallLocal(); document.getElementById("lsCloseBtn").click(); }
+                if(overlayVisible) { endCallLocal(); closeAdminChatUI(); }
             }
         });
 
@@ -1877,28 +817,26 @@
                 let hasDeletes = false;
 
                 // 🆕 Check if panel is physically open and tab is active
-                let isPanelOpen = document.getElementById("lsPanel").style.display === "block";
-                let isTabActive = !document.hidden;
+                let isChatOpen = (currentKey === key) && !document.hidden && document.getElementById("mainChatArea").classList.contains("active-mobile") || window.innerWidth > 768;
 
                 Object.keys(msgs).forEach(msgId => {
                     let m = msgs[msgId];
                     if (now - m.timestamp > twelveHoursInMs) { updatesToPerform[msgId] = null; hasDeletes = true; return; }
                     
-                    // 🆕 GHOST LISTENER FIX: Sirf tab Read mark karo jab panel actually khula ho aur tab samne ho
-                    if(m.sender === 'admin' && m.status !== 'read' && isPanelOpen && isTabActive) { 
+                    // 🆕 GHOST LISTENER FIX: Sirf tab Read mark karo jab chat actually open ho
+                    if(m.sender === 'student' && m.status !== 'read' && isChatOpen) { 
                         update(ref(db, `messages/${key}/${msgId}`), { status: 'read' }); 
                     }
 
                     let time = new Date(m.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                    let isStudent = m.sender === 'student';
-                    let tickHtml = isStudent ? (m.status === 'read' ? '<i class="fas fa-check-double" style="color: #34b7f1; font-size: 0.75rem;"></i>' : '<i class="fas fa-check" style="color: #cbd5e1; font-size: 0.75rem;"></i>') : '';
+                    let isAdmin = m.sender === 'admin';
+                    let tickHtml = isAdmin ? (m.status === 'read' ? '<i class="fas fa-check-double" style="color: #34b7f1; font-size: 0.75rem;"></i>' : '<i class="fas fa-check" style="color: #cbd5e1; font-size: 0.75rem;"></i>') : '';
                     let contentHtml = "";
-
+                    
                     if (m.replyTo) {
-                        let repName = m.replyTo.sender === 'student' ? 'You' : 'Admin';
+                        let repName = m.replyTo.sender === 'admin' ? 'You' : 'Student';
                         contentHtml += `<div class="replied-msg-box"><strong>${repName}</strong>${escapeHtml(m.replyTo.text)}</div>`;
                     }
-
                     let textContent = escapeHtml(m.text || "");
                     let textSnippetForReply = textContent || "📷 Media File";
 
@@ -1910,51 +848,42 @@
                     }
                     contentHtml += textContent;
                     let actionsHtml = `<div class="msg-controls"><i class="fas fa-reply msg-btn reply" onclick="window.setReply('${msgId}', '${textSnippetForReply.replace(/'/g, "\\'")}', '${m.sender}')"></i><i class="fas fa-trash msg-btn delete" onclick="window.deleteMessage('${msgId}')"></i></div>`;
-                    newHtmlString += `<div class="chat-bubble ${isStudent ? 'student' : 'admin'}">${contentHtml}<span class="bubble-time">${actionsHtml} ${time} ${tickHtml}</span></div>`;
+                    newHtmlString += `<div class="msg ${isAdmin ? 'msg-admin' : 'msg-student'}">${contentHtml}<span class="msg-time">${actionsHtml} ${time} ${tickHtml}</span></div>`;
                 });
-                
                 if (hasDeletes) { update(ref(db, `messages/${key}`), updatesToPerform); }
                 msgBox.innerHTML = newHtmlString; msgBox.scrollTop = msgBox.scrollHeight;
-            } else {
-                msgBox.innerHTML = `<div class="empty-chat"><i class="fas fa-inbox"></i><p>Yahan abhi koi message nahi hai.</p></div>`;
-            }
+            } else { msgBox.innerHTML = `<div class="empty-chat"><i class="fas fa-inbox"></i><p>Yahan abhi koi message nahi hai.</p></div>`; }
         });
 
+        // 🆕 STATUS TEXT FIX FOR ADMIN
         onValue(currentStatusRef, (snapshot) => {
             const data = snapshot.val();
             if(data) {
-                if(data.admin_typing) { adminStatusBox.innerHTML = `<span style="color: #60a5fa;">Typing... ✍️</span>`; } 
-                else if(data.admin_status === 'online') { adminStatusBox.innerHTML = `<span style="color: #4ade80;">Online 🟢</span>`; } 
-                else { adminStatusBox.innerHTML = `<span style="color: #94a3b8;">Offline 🔴</span>`; }
+                if(data.student_typing) { statusBox.innerHTML = `<span class="status-typing">Typing... ✍️</span>`; } 
+                else if(data.student_status === 'online') { statusBox.innerHTML = `<span class="status-online">Online 🟢</span>`; } 
+                else { statusBox.innerHTML = `<span class="status-offline">Offline 🔴</span>`; }
             }
         });
     }
 
-    function sendStudentMessage() {
-        if(isSending) return; 
+    function sendMessage() {
+        if(isSending) return;
         let text = msgInput.value.trim();
-        if (text !== "" && activeSessionKey) {
+        if (text !== "" && currentKey) {
             isSending = true;
-            let msgObj = { sender: 'student', text: text, timestamp: Date.now(), status: 'sent' };
+            let msgObj = { sender: 'admin', text: text, timestamp: Date.now(), status: 'sent' };
             if(replyingToData) { msgObj.replyTo = replyingToData; window.cancelReply(); }
-            push(ref(db, 'messages/' + activeSessionKey), msgObj);
-            
-            fetch('/.netlify/functions/send-notification', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: activeSessionKey, message: text, type: 'message' })
-            }).catch(e => console.log(e));
-
+            push(ref(db, 'messages/' + currentKey), msgObj);
             msgInput.value = ""; emojiPicker.classList.remove("active");
-            update(ref(db, 'support_keys/' + activeSessionKey), { student_typing: false });
+            update(ref(db, 'support_keys/' + currentKey), { admin_typing: false });
             setTimeout(() => { isSending = false; }, 300);
         }
     }
 
-    document.getElementById("studentSendBtn").addEventListener("click", sendStudentMessage);
-    msgInput.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); sendStudentMessage(); } });
+    document.getElementById("adminSendBtn").addEventListener("click", sendMessage);
+    msgInput.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); sendMessage(); } });
     msgInput.addEventListener("input", () => {
-        if(activeSessionKey) { update(ref(db, 'support_keys/' + activeSessionKey), { student_typing: true }); clearTimeout(studentTypingTimer); studentTypingTimer = setTimeout(() => { update(ref(db, 'support_keys/' + activeSessionKey), { student_typing: false }); }, 1500); }
+        if(currentKey) { update(ref(db, 'support_keys/' + currentKey), { admin_typing: true }); clearTimeout(typingTimer); typingTimer = setTimeout(() => { update(ref(db, 'support_keys/' + currentKey), { admin_typing: false }); }, 1500); }
     });
 </script>
 </body>
