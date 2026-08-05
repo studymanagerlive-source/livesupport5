@@ -281,6 +281,7 @@
             <p>लाइव ऑनलाइन डेटाबेस · ऐप स्टाइल लेआउट</p>
         </div>
         <div class="header-actions">
+            <!-- SECRET SUPPORT BUTTON -->
             <div id="secretSupportBtn" style="font-size: 1.8rem; cursor: pointer; user-select: none;">👨‍💻</div>
             
             <div class="notif-bell" id="bellIconBtn" onclick="openNotifications()">
@@ -1346,7 +1347,7 @@
     loadData(); 
 </script>
 
-<!-- 🆕 Firebase Live Support Logic -->
+<!-- 🆕 Firebase Live Support Logic with Smart WebRTC Error Handler -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
     import { getDatabase, ref, get, push, onValue, update, onDisconnect, off, remove, set, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
@@ -1371,17 +1372,14 @@
     let studentTypingTimer;
     
     let isSending = false;
-    
-    // 🆕 GHOST LISTENER FIX: Variables to store unsubscribe functions
     let unsubMessages = null;
     let unsubStatus = null;
     let unsubCalls = null;
     let replyingToData = null;
 
     let isAppVisible = true;
-    let currentStudentStatusLocal = 'offline'; // 🆕 Track DB status locally
+    let currentAdminStatusLocal = 'offline'; // 🆕 Track Admin DB status locally
 
-    // 🆕 VISIBILITY LISTENER (LAST SEEN SUPPORT)
     document.addEventListener('visibilitychange', () => {
         isAppVisible = !document.hidden;
         if(activeSessionKey) {
@@ -1393,7 +1391,6 @@
         }
     });
 
-    // 🆕 LAST SEEN FORMATTER FUNCTION
     function formatLastSeen(ts) {
         if (!ts) return "Offline";
         let date = new Date(ts);
@@ -1480,7 +1477,7 @@
         }
     });
 
-    // --- WEBRTC CALL LOGIC START ---
+    // --- 🆕 WEBRTC CALL LOGIC START WITH SMART ERROR HANDLER ---
     document.getElementById("studentCallBtn").addEventListener("click", () => { if(activeSessionKey) initiateCall('audio'); });
     document.getElementById("studentVideoCallBtn").addEventListener("click", () => { if(activeSessionKey) initiateCall('video'); });
 
@@ -1536,8 +1533,7 @@
                 }
             });
 
-            if(unsubIce) { unsubIce(); unsubIce = null; }
-            unsubIce = onValue(ref(db, `calls/${activeSessionKey}/iceCandidates/admin`), snapshot => {
+            let unsubIce = onValue(ref(db, `calls/${activeSessionKey}/iceCandidates/admin`), snapshot => {
                 snapshot.forEach(childSnapshot => {
                     const candidate = new RTCIceCandidate(childSnapshot.val());
                     if(peerConnection) peerConnection.addIceCandidate(candidate);
@@ -1545,7 +1541,16 @@
             });
 
         } catch (error) {
-            alert("Permission denied! Please allow camera/microphone access.");
+            console.error("Media Error: ", error);
+            if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+                alert("Error: Camera ya Microphone nahi mila! Kripya check karein ki device connect hai.");
+            } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+                alert("Error: Camera/Mic pehle se kisi aur app (Zoom/Meet/Camera) mein open hai.");
+            } else if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                alert("Error: Browser ya Windows Privacy settings se Mic/Camera block hai.");
+            } else {
+                alert("Call Error: " + error.message);
+            }
             endCallLocal();
         }
     }
@@ -1597,8 +1602,7 @@
             if(isVideoCall) document.getElementById("videoToggleBtn").style.display = "inline-block";
             startCallTimer();
 
-            if(unsubIce) { unsubIce(); unsubIce = null; }
-            unsubIce = onValue(ref(db, `calls/${activeSessionKey}/iceCandidates/admin`), snapshot => {
+            let unsubIce = onValue(ref(db, `calls/${activeSessionKey}/iceCandidates/admin`), snapshot => {
                 snapshot.forEach(childSnapshot => {
                     const candidate = new RTCIceCandidate(childSnapshot.val());
                     if(peerConnection) peerConnection.addIceCandidate(candidate);
@@ -1606,7 +1610,16 @@
             });
 
         } catch(error) {
-            alert("Camera/Microphone Error: " + error.message);
+            console.error("Media Error: ", error);
+            if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+                alert("Error: Camera ya Microphone nahi mila! Kripya check karein ki device connect hai.");
+            } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+                alert("Error: Camera/Mic pehle se kisi aur app (Zoom/Meet/Camera) mein open hai.");
+            } else if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                alert("Error: Browser ya Windows Privacy settings se Mic/Camera block hai.");
+            } else {
+                alert("Call Error: " + error.message);
+            }
             endCallLocal();
         }
     }
@@ -1664,7 +1677,6 @@
 
         if (peerConnection) { peerConnection.close(); peerConnection = null; }
         if (localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; }
-        if (unsubIce) { unsubIce(); unsubIce = null; }
 
         document.getElementById("remoteVideoCall").srcObject = null;
         document.getElementById("localVideo").srcObject = null;
@@ -1766,7 +1778,7 @@
         clearTimeout(supportTapTimer);
         
         if (supportTapCount >= 10) {
-            supportTapCount = 0; // reset
+            supportTapCount = 0; 
             document.getElementById("lsPanel").style.display = "block"; 
             if(!activeSessionKey) {
                 document.getElementById("studentKeyInput").value = "";
@@ -1791,7 +1803,6 @@
             activeSessionKey = null;
         }
 
-        // 🆕 Ghost Listener Fix using Unsubscribe
         if(unsubMessages) { unsubMessages(); unsubMessages = null; }
         if(unsubStatus) { unsubStatus(); unsubStatus = null; }
         if(unsubCalls) { unsubCalls(); unsubCalls = null; }
@@ -1844,16 +1855,14 @@
         const msgBox = document.getElementById("studentChatMessages");
         const adminStatusBox = document.getElementById("adminStatusDisplay");
 
-        // CLEAN PREVIOUS LISTENERS
         if(unsubMessages) { unsubMessages(); unsubMessages = null; }
         if(unsubStatus) { unsubStatus(); unsubStatus = null; }
         if(unsubCalls) { unsubCalls(); unsubCalls = null; }
 
-        // 🆕 LISTEN FOR STATUS FIRST TO SET LOCAL TRACKER
         unsubStatus = onValue(ref(db, `support_keys/${key}`), (snapshot) => {
             const data = snapshot.val();
             if(data) {
-                currentStudentStatusLocal = data.student_status || 'offline'; // 🆕 Track DB status locally
+                currentAdminStatusLocal = data.admin_status || 'offline'; 
                 
                 if(data.admin_typing) { adminStatusBox.innerHTML = `<span style="color: #60a5fa;">Typing... ✍️</span>`; } 
                 else if(data.admin_status === 'online') { adminStatusBox.innerHTML = `<span style="color: #4ade80;">Online 🟢</span>`; } 
@@ -1864,7 +1873,6 @@
             }
         });
 
-        // LISTEN FOR CALLS
         unsubCalls = onValue(ref(db, `calls/${key}`), (snapshot) => {
             const data = snapshot.val();
             let overlayVisible = document.getElementById("callOverlay").style.display === "flex";
@@ -1889,7 +1897,6 @@
             }
         });
 
-        // LISTEN FOR MESSAGES
         unsubMessages = onValue(ref(db, `messages/${key}`), (snapshot) => {
             const msgs = snapshot.val();
             let newHtmlString = ""; 
@@ -1906,8 +1913,7 @@
                     let m = msgs[msgId];
                     if (now - m.timestamp > twelveHoursInMs) { updatesToPerform[msgId] = null; hasDeletes = true; return; }
                     
-                    // 🆕 GHOST LISTENER DOUBLE PROTECTION FIX
-                    if(m.sender === 'admin' && m.status !== 'read' && isPanelOpen && isAppVisible && isCorrectKey && currentStudentStatusLocal === 'online') { 
+                    if(m.sender === 'admin' && m.status !== 'read' && isPanelOpen && isAppVisible && isCorrectKey && currentAdminStatusLocal === 'online') { 
                         update(ref(db, `messages/${key}/${msgId}`), { status: 'read' }); 
                     }
 
