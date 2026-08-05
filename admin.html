@@ -271,16 +271,14 @@
     let isSending = false;
     const ADMIN_PASSWORD = "Ankush@2026";
 
-    // 🆕 GHOST LISTENER FIX: Variables to store unsubscribe functions
     let unsubMessages = null;
     let unsubStatus = null;
     let unsubCalls = null;
     let replyingToData = null;
 
     let isAppVisible = !document.hidden;
-    let currentStudentStatusLocal = 'offline';
 
-    // --- 🆕 VISIBILITY LISTENER (LAST SEEN SUPPORT) ---
+    // --- VISIBILITY LISTENER (LAST SEEN SUPPORT) ---
     document.addEventListener('visibilitychange', () => {
         isAppVisible = !document.hidden;
         if(currentKey) {
@@ -292,7 +290,7 @@
         }
     });
 
-    // --- 🆕 LAST SEEN FORMATTER FUNCTION ---
+    // --- LAST SEEN FORMATTER FUNCTION ---
     function formatLastSeen(ts) {
         if (!ts) return "Offline";
         let date = new Date(ts);
@@ -315,7 +313,6 @@
         closeAdminChatUI();
     });
 
-    // --- PWA INSTALLATION LOGIC ---
     let deferredPrompt;
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
@@ -332,7 +329,6 @@
         }
     });
 
-    // --- PUSH NOTIFICATION PERMISSION ---
     async function requestNotificationPermission() {
         try {
             const permission = await Notification.requestPermission();
@@ -349,7 +345,6 @@
         } catch(err) { console.log('Notification Err:', err); }
     }
 
-    // --- BACKGROUND / LOCAL NOTIFICATION LISTENER ---
     let initAlert = true;
     onValue(ref(db, 'admin_alerts/latest'), (snapshot) => {
         if(initAlert) { initAlert = false; return; }
@@ -371,7 +366,6 @@
         }
     });
 
-    // --- WEBRTC CALLING VARIABLES ---
     let localStream;
     let peerConnection;
     let unsubIce = null;
@@ -411,7 +405,6 @@
         if(confirm("Delete this message permanently?")) { remove(ref(db, `messages/${currentKey}/${msgId}`)); }
     };
 
-    // --- WEBRTC MEDIA CONTROLS ---
     document.getElementById("muteCallBtn").addEventListener("click", () => {
         if(localStream && localStream.getAudioTracks().length > 0) {
             isMuted = !isMuted;
@@ -459,7 +452,6 @@
         }
     });
 
-    // --- WEBRTC CALL LOGIC START ---
     document.getElementById("adminCallBtn").addEventListener("click", () => { if(currentKey) initiateCall('audio'); });
     document.getElementById("adminVideoCallBtn").addEventListener("click", () => { if(currentKey) initiateCall('video'); });
 
@@ -570,7 +562,7 @@
             await peerConnection.setLocalDescription(answerDescription);
 
             const callConfig = {
-                caller: 'student',
+                caller: 'admin',
                 status: 'ongoing',
                 callType: callType,
                 answer: { type: answerDescription.type, sdp: answerDescription.sdp }
@@ -630,12 +622,10 @@
         }
     }
 
-    // --- CLEAN CLOSING FUNCTIONS ---
     function closeAdminChatUI() {
         if(currentKey) { update(ref(db, 'support_keys/' + currentKey), { admin_status: 'offline', admin_typing: false, admin_last_seen: serverTimestamp() }); }
         currentKey = null;
         
-        // 🆕 Kill all listeners on close
         if(unsubMessages) { unsubMessages(); unsubMessages = null; }
         if(unsubStatus) { unsubStatus(); unsubStatus = null; }
         if(unsubCalls) { unsubCalls(); unsubCalls = null; }
@@ -699,9 +689,7 @@
             document.getElementById("callTimer").innerText = `${m}:${s}`;
         }, 1000);
     }
-    // --- WEBRTC CALL LOGIC END ---
 
-    // Emojis logic
     const emojis = ["😀","😃","😄","😁","😆","😅","😂","🤣","😊","😇","🙂","🙃","😉","😌","😍","🥰","😘","😋","😛","😝","😜","🤪","🤓","😎","🤩","🥳","😏","😒","😞","😔","😟","😕","🙁","☹️","😣","😖","😫","😩","🥺","😢","😭","😤","😠","😡","🤯","😳","😱","😨","😰","😥","😓","🤗","🤔","🤭","🤫","😶","😐","😑","😬","🙄","😯","😦","😧","😮","😲","🥱","😴","🤤","😪","😵","🤐","🥴","🤢","🤮","🤧","😷","🤒","🤕","🤑","🤠","😈","👿","👻","💀","👽","👾","🤖","🎃","👍","👎","👏","🙌","👐","🤲","🤝","🙏","✌️","🤞","👆","👇","👈","👉","🔥","💯","❤️","💔"];
     const emojiPicker = document.getElementById("adminEmojiPicker");
     const msgInput = document.getElementById("adminMsgInput");
@@ -828,12 +816,10 @@
         if(unsubStatus) { unsubStatus(); unsubStatus = null; }
         if(unsubCalls) { unsubCalls(); unsubCalls = null; }
 
-        // 🆕 LISTEN FOR STATUS FIRST TO SET LOCAL TRACKER
+        // 🆕 LISTEN FOR STATUS (WITH LAST SEEN)
         unsubStatus = onValue(ref(db, `support_keys/${key}`), (snapshot) => {
             const data = snapshot.val();
             if(data) {
-                currentStudentStatusLocal = data.student_status || 'offline'; 
-                
                 if(data.student_typing) { statusBox.innerHTML = `<span class="status-typing">Typing... ✍️</span>`; } 
                 else if(data.student_status === 'online') { statusBox.innerHTML = `<span class="status-online">Online 🟢</span>`; } 
                 else { 
@@ -843,7 +829,7 @@
             }
         });
 
-        // LISTEN FOR CALLS
+        // 🆕 100% CORRECT CALL LISTENER FOR ADMIN
         unsubCalls = onValue(ref(db, `calls/${key}`), (snapshot) => {
             const data = snapshot.val();
             let overlayVisible = document.getElementById("callOverlay").style.display === "flex";
@@ -852,6 +838,8 @@
                 if(overlayVisible) { endCallLocal(); closeAdminChatUI(); }
                 return; 
             }
+            
+            // 🆕 BUG FIX: Yahan 'student' call karega Admin ko!
             if(data.caller === 'student' && data.status === 'calling') {
                 document.getElementById("callOverlay").style.display = "flex";
                 document.getElementById("callPulse").style.display = "flex";
@@ -869,7 +857,7 @@
             }
         });
 
-        // LISTEN FOR MESSAGES
+        // 🆕 MESSAGE LISTENER WITH DOUBLE PROTECTION
         unsubMessages = onValue(ref(db, `messages/${key}`), (snapshot) => {
             const msgs = snapshot.val();
             let newHtmlString = ""; 
@@ -885,8 +873,8 @@
                     let m = msgs[msgId];
                     if (now - m.timestamp > twelveHoursInMs) { updatesToPerform[msgId] = null; hasDeletes = true; return; }
                     
-                    // 🆕 GHOST LISTENER DOUBLE PROTECTION FIX
-                    if(m.sender === 'student' && m.status !== 'read' && isChatOpen && isAppVisible && currentStudentStatusLocal === 'online') { 
+                    // 🆕 Protection: Sirf tab Read mark karo jab panel khula ho
+                    if(m.sender === 'student' && m.status !== 'read' && isChatOpen && isAppVisible) { 
                         update(ref(db, `messages/${key}/${msgId}`), { status: 'read' }); 
                     }
 
