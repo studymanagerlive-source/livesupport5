@@ -281,7 +281,6 @@
             <p>लाइव ऑनलाइन डेटाबेस · ऐप स्टाइल लेआउट</p>
         </div>
         <div class="header-actions">
-            <!-- SECRET SUPPORT BUTTON -->
             <div id="secretSupportBtn" style="font-size: 1.8rem; cursor: pointer; user-select: none;">👨‍💻</div>
             
             <div class="notif-bell" id="bellIconBtn" onclick="openNotifications()">
@@ -1378,8 +1377,28 @@
     let replyingToData = null;
 
     let isAppVisible = true;
-    let currentAdminStatusLocal = 'offline'; // 🆕 Track Admin DB status locally
+    let currentAdminStatusLocal = 'offline'; 
 
+    // --- 🆕 WEBRTC CALLING VARIABLES (RE-ADDED & FIXED!) ---
+    let localStream = null;
+    let peerConnection = null;
+    let unsubIce = null;
+    let callTimerInterval;
+    let callSeconds = 0;
+    
+    let isMuted = false;
+    let isVideoCall = false;
+    let isVideoMuted = false;
+    let isSpeakerLoud = true; 
+
+    const pcConfig = {
+        iceServers: [
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' }
+        ]
+    };
+
+    // 🆕 VISIBILITY LISTENER
     document.addEventListener('visibilitychange', () => {
         isAppVisible = !document.hidden;
         if(activeSessionKey) {
@@ -1477,7 +1496,6 @@
         }
     });
 
-    // --- 🆕 WEBRTC CALL LOGIC START WITH SMART ERROR HANDLER ---
     document.getElementById("studentCallBtn").addEventListener("click", () => { if(activeSessionKey) initiateCall('audio'); });
     document.getElementById("studentVideoCallBtn").addEventListener("click", () => { if(activeSessionKey) initiateCall('video'); });
 
@@ -1533,7 +1551,8 @@
                 }
             });
 
-            let unsubIce = onValue(ref(db, `calls/${activeSessionKey}/iceCandidates/admin`), snapshot => {
+            if(unsubIce) { unsubIce(); unsubIce = null; }
+            unsubIce = onValue(ref(db, `calls/${activeSessionKey}/iceCandidates/admin`), snapshot => {
                 snapshot.forEach(childSnapshot => {
                     const candidate = new RTCIceCandidate(childSnapshot.val());
                     if(peerConnection) peerConnection.addIceCandidate(candidate);
@@ -1602,7 +1621,8 @@
             if(isVideoCall) document.getElementById("videoToggleBtn").style.display = "inline-block";
             startCallTimer();
 
-            let unsubIce = onValue(ref(db, `calls/${activeSessionKey}/iceCandidates/admin`), snapshot => {
+            if(unsubIce) { unsubIce(); unsubIce = null; }
+            unsubIce = onValue(ref(db, `calls/${activeSessionKey}/iceCandidates/admin`), snapshot => {
                 snapshot.forEach(childSnapshot => {
                     const candidate = new RTCIceCandidate(childSnapshot.val());
                     if(peerConnection) peerConnection.addIceCandidate(candidate);
@@ -1677,6 +1697,7 @@
 
         if (peerConnection) { peerConnection.close(); peerConnection = null; }
         if (localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; }
+        if (unsubIce) { unsubIce(); unsubIce = null; }
 
         document.getElementById("remoteVideoCall").srcObject = null;
         document.getElementById("localVideo").srcObject = null;
@@ -1699,7 +1720,6 @@
             document.getElementById("callTimer").innerText = `${m}:${s}`;
         }, 1000);
     }
-    // --- WEBRTC CALL LOGIC END ---
 
     // EMOJI LOGIC
     const emojis = ["😀","😃","😄","😁","😆","😅","😂","🤣","😊","😇","🙂","🙃","😉","😌","😍","🥰","😘","😋","😛","😝","😜","🤪","🤓","😎","🤩","🥳","😏","😒","😞","😔","😟","😕","🙁","☹️","😣","😖","😫","😩","🥺","😢","😭","😤","😠","😡","🤯","😳","😱","😨","😰","😥","😓","🤗","🤔","🤭","🤫","😶","😐","😑","😬","🙄","😯","😦","😧","😮","😲","🥱","😴","🤤","😪","😵","🤐","🥴","🤢","🤮","🤧","😷","🤒","🤕","🤑","🤠","😈","👿","👻","💀","👽","👾","🤖","🎃","👍","👎","👏","🙌","👐","🤲","🤝","🙏","✌️","🤞","👆","👇","👈","👉","🔥","💯","❤️","💔"];
@@ -1770,7 +1790,6 @@
     document.getElementById("studentHeaderCameraBtn").addEventListener("click", () => { if(activeSessionKey) document.getElementById("studentCameraInput").click(); });
     document.getElementById("studentCameraInput").addEventListener("change", (e) => { uploadToCloudinary(e.target.files[0], document.getElementById("studentHeaderCameraBtn"), '<i class="fas fa-camera"></i>'); e.target.value = ""; });
 
-    // 🆕 10-TAP SECRET EMOJI LOGIC
     let supportTapCount = 0;
     let supportTapTimer;
     document.getElementById("secretSupportBtn").addEventListener("click", () => {
