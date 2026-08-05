@@ -563,9 +563,23 @@
         }
     }
 
+    // --- 🆕 CLEAN CLOSING FUNCTIONS ---
+    function closeAdminChatUI() {
+        if(currentKey) { update(ref(db, 'support_keys/' + currentKey), { admin_status: 'offline', admin_typing: false }); }
+        currentKey = null;
+        document.getElementById("mainChatArea").classList.remove("active-mobile");
+        document.getElementById("chatTitleText").innerHTML = `<span><i class="fas fa-comments"></i> Select a key</span>`;
+        document.getElementById("studentStatus").innerHTML = "";
+        document.getElementById("chatMessages").innerHTML = `<div class="empty-chat"><i class="fas fa-inbox"></i><p>Koi chat select nahi ki gayi hai.</p></div>`;
+        document.getElementById("chatBottomWrapper").style.display = "none";
+        document.getElementById("headerActionsBlock").style.display = "none";
+        document.querySelectorAll(".key-item").forEach(el => el.classList.remove("active"));
+    }
+
     document.getElementById("endCallBtn").addEventListener("click", () => {
         if(currentKey) remove(ref(db, `calls/${currentKey}`));
         endCallLocal();
+        closeAdminChatUI(); // Manual cut hone par chat window bhi band hogi
     });
 
     function endCallLocal() {
@@ -588,22 +602,11 @@
         if (peerConnection) { peerConnection.close(); peerConnection = null; }
         if (localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; }
         if (iceCandidatesRef) { off(iceCandidatesRef); }
-        
+
         document.getElementById("remoteVideoCall").srcObject = null;
         document.getElementById("localVideo").srcObject = null;
         document.getElementById("remoteAudio").volume = 1.0;
         document.getElementById("remoteVideoCall").volume = 1.0;
-        
-        // 🆕 CALL END HOTE HI CHAT BAND HO JAYEGI 
-        if(currentKey) { update(ref(db, 'support_keys/' + currentKey), { admin_status: 'offline', admin_typing: false }); }
-        currentKey = null;
-        document.getElementById("mainChatArea").classList.remove("active-mobile");
-        document.getElementById("chatTitleText").innerHTML = `<span><i class="fas fa-comments"></i> Select a key</span>`;
-        document.getElementById("studentStatus").innerHTML = "";
-        document.getElementById("chatMessages").innerHTML = `<div class="empty-chat"><i class="fas fa-inbox"></i><p>Koi chat select nahi ki gayi hai.</p></div>`;
-        document.getElementById("chatBottomWrapper").style.display = "none";
-        document.getElementById("headerActionsBlock").style.display = "none";
-        document.querySelectorAll(".key-item").forEach(el => el.classList.remove("active"));
     }
 
     function startCallTimer() {
@@ -677,13 +680,7 @@
             document.getElementById("loginScreen").style.display = "none";
             document.getElementById("dashboard").style.display = "flex";
             loadKeys();
-            requestNotificationPermission(); // Asks for permission securely after user click
-
-            const urlParams = new URLSearchParams(window.location.search);
-            const deepLinkKey = urlParams.get('key');
-            if (deepLinkKey) {
-                setTimeout(() => openChat(deepLinkKey), 400);
-            }
+            requestNotificationPermission(); 
         } else {
             document.getElementById("loginErrorMsg").style.display = "block";
         }
@@ -746,11 +743,18 @@
         if(currentStatusRef) off(currentStatusRef);
         currentStatusRef = ref(db, 'support_keys/' + key);
 
+        // --- 🆕 FIXED BUG: Listen for Incoming Calls from Student without auto-closing ---
         if(callStateRef) off(callStateRef);
         callStateRef = ref(db, `calls/${key}`);
         onValue(callStateRef, (snapshot) => {
             const data = snapshot.val();
-            if(!data) { endCallLocal(); return; }
+            let overlayVisible = document.getElementById("callOverlay").style.display === "flex";
+
+            if(!data) { 
+                // Agar call pehle chal rahi thi aur achanak cut ho gayi
+                if(overlayVisible) { endCallLocal(); closeAdminChatUI(); }
+                return; 
+            }
             if(data.caller === 'student' && data.status === 'calling') {
                 document.getElementById("callOverlay").style.display = "flex";
                 document.getElementById("callPulse").style.display = "flex";
@@ -764,7 +768,7 @@
 
                 document.getElementById("acceptCallBtn").onclick = () => answerCall(data.offer, data.callType);
             } else if (data.status === 'ended') {
-                endCallLocal();
+                if(overlayVisible) { endCallLocal(); closeAdminChatUI(); }
             }
         });
 
@@ -780,15 +784,15 @@
                 Object.keys(msgs).forEach(msgId => {
                     let m = msgs[msgId];
                     if (now - m.timestamp > twelveHoursInMs) { updatesToPerform[msgId] = null; hasDeletes = true; return; }
-                    if(m.sender === 'admin' && m.status !== 'read') { update(ref(db, `messages/${key}/${msgId}`), { status: 'read' }); }
+                    if(m.sender === 'student' && m.status !== 'read') { update(ref(db, `messages/${key}/${msgId}`), { status: 'read' }); }
 
                     let time = new Date(m.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                    let isStudent = m.sender === 'student';
-                    let tickHtml = isStudent ? (m.status === 'read' ? '<i class="fas fa-check-double" style="color: #34b7f1; font-size: 0.75rem;"></i>' : '<i class="fas fa-check" style="color: #cbd5e1; font-size: 0.75rem;"></i>') : '';
+                    let isAdmin = m.sender === 'admin';
+                    let tickHtml = isAdmin ? (m.status === 'read' ? '<i class="fas fa-check-double" style="color: #34b7f1; font-size: 0.75rem;"></i>' : '<i class="fas fa-check" style="color: #cbd5e1; font-size: 0.75rem;"></i>') : '';
                     let contentHtml = "";
                     
                     if (m.replyTo) {
-                        let repName = m.replyTo.sender === 'student' ? 'You' : 'Admin';
+                        let repName = m.replyTo.sender === 'admin' ? 'You' : 'Student';
                         contentHtml += `<div class="replied-msg-box"><strong>${repName}</strong>${escapeHtml(m.replyTo.text)}</div>`;
                     }
                     let textContent = escapeHtml(m.text || "");
@@ -802,9 +806,8 @@
                     }
                     contentHtml += textContent;
                     let actionsHtml = `<div class="msg-controls"><i class="fas fa-reply msg-btn reply" onclick="window.setReply('${msgId}', '${textSnippetForReply.replace(/'/g, "\\'")}', '${m.sender}')"></i><i class="fas fa-trash msg-btn delete" onclick="window.deleteMessage('${msgId}')"></i></div>`;
-                    newHtmlString += `<div class="msg ${isStudent ? 'msg-student' : 'msg-admin'}">${contentHtml}<span class="msg-time">${actionsHtml} ${time} ${tickHtml}</span></div>`;
+                    newHtmlString += `<div class="msg ${isAdmin ? 'msg-admin' : 'msg-student'}">${contentHtml}<span class="msg-time">${actionsHtml} ${time} ${tickHtml}</span></div>`;
                 });
-                
                 if (hasDeletes) { update(ref(db, `messages/${key}`), updatesToPerform); }
                 msgBox.innerHTML = newHtmlString; msgBox.scrollTop = msgBox.scrollHeight;
             } else { msgBox.innerHTML = `<div class="empty-chat"><i class="fas fa-inbox"></i><p>Yahan abhi koi message nahi hai.</p></div>`; }
@@ -822,7 +825,7 @@
     }
 
     function sendMessage() {
-        if(isSending) return; 
+        if(isSending) return;
         let text = msgInput.value.trim();
         if (text !== "" && currentKey) {
             isSending = true;
