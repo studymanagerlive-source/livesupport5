@@ -2,7 +2,7 @@
 <html lang="hi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Study Notes Manager | लाइव ऐप</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -349,7 +349,7 @@
                     <option value="video">वीडियो (YouTube / Play)</option>
                     <option value="image">इमेज (Photo / Screenshot)</option>
                     <option value="test">ऑनलाइन टेस्ट (Quiz)</option>
-                    <option value="link">अन्य লিংক (Website)</option>
+                    <option value="link">अन्य लिंक (Website)</option>
                     <option value="book">किताब (Book)</option>
                 </select>
             </div>
@@ -481,7 +481,7 @@
     </div>
 </div>
 
-<div class="livesupport-fab" id="lsFabBtn" title="Live Support">
+<div class="livesupport-fab" id="lsFabBtn">
     <i class="fas fa-headset"></i>
 </div>
 
@@ -1397,6 +1397,17 @@
             { urls: 'stun:stun2.l.google.com:19302' }
         ]
     };
+
+    // 🆕 VISIBILITY LISTENER TO DROP STATUS TO OFFLINE WHEN MINIMIZED
+    document.addEventListener('visibilitychange', () => {
+        if(activeSessionKey) {
+            if (document.hidden) {
+                update(ref(db, 'support_keys/' + activeSessionKey), { student_status: 'offline', student_typing: false });
+            } else {
+                update(ref(db, 'support_keys/' + activeSessionKey), { student_status: 'online' });
+            }
+        }
+    });
     
     function escapeHtml(str) { return str.replace(/[&<>]/g, m => m=='&'?'&amp;':m=='<'?'&lt;':'&gt;'); }
 
@@ -1625,7 +1636,6 @@
     });
 
     function endCallLocal() {
-        // 🆕 NEW FIX: Only act as a call end if we were actually IN a call.
         let wasInCall = (peerConnection !== null);
 
         document.getElementById("callOverlay").style.display = "none";
@@ -1653,7 +1663,6 @@
         document.getElementById("remoteAudio").volume = 1.0;
         document.getElementById("remoteVideoCall").volume = 1.0;
         
-        // 🆕 CALL END HOTE HI CHAT BAND HO JAYEGI 
         if (wasInCall) {
             document.getElementById("lsCloseBtn").click();
         }
@@ -1832,7 +1841,6 @@
         if(currentStatusRef) off(currentStatusRef);
         currentStatusRef = ref(db, 'support_keys/' + key);
 
-        // --- Listen for Incoming Calls from Admin ---
         if(callStateRef) off(callStateRef);
         callStateRef = ref(db, `calls/${key}`);
         onValue(callStateRef, (snapshot) => {
@@ -1840,8 +1848,7 @@
             let overlayVisible = document.getElementById("callOverlay").style.display === "flex";
 
             if(!data) { 
-                // Agar call pehle chal rahi thi aur achanak cut ho gayi
-                if(overlayVisible) { endCallLocal(); closeStudentChatUI(); }
+                if(overlayVisible) { endCallLocal(); document.getElementById("lsCloseBtn").click(); }
                 return; 
             }
             
@@ -1856,7 +1863,7 @@
                 document.getElementById("speakerCallBtn").style.display = "none";
                 document.getElementById("acceptCallBtn").onclick = () => answerCall(data.offer, data.callType);
             } else if (data.status === 'ended') {
-                if(overlayVisible) { endCallLocal(); closeStudentChatUI(); }
+                if(overlayVisible) { endCallLocal(); document.getElementById("lsCloseBtn").click(); }
             }
         });
 
@@ -1869,10 +1876,18 @@
                 let updatesToPerform = {};
                 let hasDeletes = false;
 
+                // 🆕 Check if panel is physically open and tab is active
+                let isPanelOpen = document.getElementById("lsPanel").style.display === "block";
+                let isTabActive = !document.hidden;
+
                 Object.keys(msgs).forEach(msgId => {
                     let m = msgs[msgId];
                     if (now - m.timestamp > twelveHoursInMs) { updatesToPerform[msgId] = null; hasDeletes = true; return; }
-                    if(m.sender === 'admin' && m.status !== 'read') { update(ref(db, `messages/${key}/${msgId}`), { status: 'read' }); }
+                    
+                    // 🆕 GHOST LISTENER FIX: Sirf tab Read mark karo jab panel actually khula ho aur tab samne ho
+                    if(m.sender === 'admin' && m.status !== 'read' && isPanelOpen && isTabActive) { 
+                        update(ref(db, `messages/${key}/${msgId}`), { status: 'read' }); 
+                    }
 
                     let time = new Date(m.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                     let isStudent = m.sender === 'student';
@@ -1905,7 +1920,6 @@
             }
         });
 
-        // 🆕 STATUS TEXT FIX FOR STUDENT
         onValue(currentStatusRef, (snapshot) => {
             const data = snapshot.val();
             if(data) {
