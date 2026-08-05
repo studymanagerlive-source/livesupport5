@@ -2,7 +2,7 @@
 <html lang="hi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
     <title>Study Notes Manager | लाइव ऐप</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -178,9 +178,7 @@
         .btn-reject { background: #ef4444; }
 
         /* ========= LIVE SUPPORT WIDGET ========= */
-        .livesupport-fab {
-            display: none !important; 
-        }
+        .livesupport-fab { display: none !important; }
         .livesupport-panel {
             position: fixed; bottom: 20px; right: 20px; width: 340px; max-width: calc(100vw - 30px);
             background: #1e293b; border-radius: 14px; box-shadow: 0 15px 40px rgba(0,0,0,0.45);
@@ -283,7 +281,7 @@
             <p>लाइव ऑनलाइन डेटाबेस · ऐप स्टाइल लेआउट</p>
         </div>
         <div class="header-actions">
-            <!-- 🆕 TOOLTIP REMOVED COMPLETELY -->
+            <!-- SECRET SUPPORT BUTTON -->
             <div id="secretSupportBtn" style="font-size: 1.8rem; cursor: pointer; user-select: none;">👨‍💻</div>
             
             <div class="notif-bell" id="bellIconBtn" onclick="openNotifications()">
@@ -526,6 +524,7 @@
                 <button class="ls-emoji-btn" id="studentAttachBtn" title="Send Media/File"><i class="fas fa-paperclip"></i></button>
                 <input type="file" id="studentFileInput" accept="image/*,video/*,audio/*" style="display: none;">
                 <input type="text" id="studentMsgInput" placeholder="Type a message..." autocomplete="off" style="flex: 1; padding: 10px 15px; border-radius: 20px; border: none; background: #334155; color: white; outline: none;">
+                <!-- 🆕 KEYBOARD FIX: CHANGED TO TOUCHSTART/MOUSEDOWN -->
                 <button id="studentSendBtn" style="background: #25D366; border: none; width: 40px; height: 40px; border-radius: 50%; color: white; cursor: pointer; flex-shrink: 0;"><i class="fas fa-paper-plane"></i></button>
             </div>
         </div>
@@ -1349,10 +1348,10 @@
     loadData(); 
 </script>
 
-<!-- 🆕 Firebase Live Support Logic with Notification Trigger via Netlify/FCM -->
+<!-- 🆕 Firebase Live Support Logic -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-    import { getDatabase, ref, get, push, onValue, update, onDisconnect, off, remove, set } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+    import { getDatabase, ref, get, push, onValue, update, onDisconnect, off, remove, set, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyBUPIULkKxZx0d7sX6kag2Fa-nmkgjnDA8",
@@ -1398,16 +1397,34 @@
         ]
     };
 
-    // 🆕 VISIBILITY LISTENER TO DROP STATUS TO OFFLINE WHEN MINIMIZED
+    // 🆕 VISIBILITY LISTENER (LAST SEEN SUPPORT)
     document.addEventListener('visibilitychange', () => {
         if(activeSessionKey) {
             if (document.hidden) {
-                update(ref(db, 'support_keys/' + activeSessionKey), { student_status: 'offline', student_typing: false });
+                update(ref(db, 'support_keys/' + activeSessionKey), { student_status: 'offline', student_typing: false, student_last_seen: serverTimestamp() });
             } else {
                 update(ref(db, 'support_keys/' + activeSessionKey), { student_status: 'online' });
             }
         }
     });
+
+    // 🆕 LAST SEEN FORMATTER FUNCTION
+    function formatLastSeen(ts) {
+        if (!ts) return "Offline";
+        let date = new Date(ts);
+        let now = new Date();
+        
+        let isToday = date.getDate() === now.getDate() && date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+        let yesterday = new Date();
+        yesterday.setDate(now.getDate() - 1);
+        let isYesterday = date.getDate() === yesterday.getDate() && date.getMonth() === yesterday.getMonth() && date.getFullYear() === yesterday.getFullYear();
+        
+        let timeStr = date.toLocaleTimeString('en-IN', {hour: '2-digit', minute:'2-digit'});
+        
+        if (isToday) return `Today at ${timeStr}`;
+        if (isYesterday) return `Yesterday at ${timeStr}`;
+        return `${date.getDate()}/${date.getMonth()+1}/${date.getFullYear().toString().slice(-2)} at ${timeStr}`;
+    }
     
     function escapeHtml(str) { return str.replace(/[&<>]/g, m => m=='&'?'&amp;':m=='<'?'&lt;':'&gt;'); }
 
@@ -1630,9 +1647,14 @@
         }
     }
 
+    function closeStudentChatUI() {
+        document.getElementById("lsCloseBtn").click();
+    }
+
     document.getElementById("endCallBtn").addEventListener("click", () => {
         if(activeSessionKey) remove(ref(db, `calls/${activeSessionKey}`));
         endCallLocal();
+        closeStudentChatUI(); 
     });
 
     function endCallLocal() {
@@ -1664,7 +1686,7 @@
         document.getElementById("remoteVideoCall").volume = 1.0;
         
         if (wasInCall) {
-            document.getElementById("lsCloseBtn").click();
+            closeStudentChatUI();
         }
     }
 
@@ -1779,7 +1801,8 @@
     document.getElementById("lsCloseBtn").addEventListener("click", () => { 
         document.getElementById("lsPanel").style.display = "none"; 
         if(activeSessionKey) {
-            update(ref(db, 'support_keys/' + activeSessionKey), { student_status: 'offline', student_typing: false });
+            // 🆕 LAST SEEN UPDATE
+            update(ref(db, 'support_keys/' + activeSessionKey), { student_status: 'offline', student_typing: false, student_last_seen: serverTimestamp() });
             activeSessionKey = null;
         }
 
@@ -1830,7 +1853,9 @@
     function loadStudentChat(key) {
         const myKeyRef = ref(db, 'support_keys/' + key);
         update(myKeyRef, { student_status: 'online' });
-        onDisconnect(myKeyRef).update({ student_status: 'offline', student_typing: false });
+        
+        // 🆕 LAST SEEN ON DISCONNECT
+        onDisconnect(myKeyRef).update({ student_status: 'offline', student_typing: false, student_last_seen: serverTimestamp() });
 
         const msgBox = document.getElementById("studentChatMessages");
         const adminStatusBox = document.getElementById("adminStatusDisplay");
@@ -1848,7 +1873,7 @@
             let overlayVisible = document.getElementById("callOverlay").style.display === "flex";
 
             if(!data) { 
-                if(overlayVisible) { endCallLocal(); document.getElementById("lsCloseBtn").click(); }
+                if(overlayVisible) { endCallLocal(); closeStudentChatUI(); }
                 return; 
             }
             
@@ -1863,7 +1888,7 @@
                 document.getElementById("speakerCallBtn").style.display = "none";
                 document.getElementById("acceptCallBtn").onclick = () => answerCall(data.offer, data.callType);
             } else if (data.status === 'ended') {
-                if(overlayVisible) { endCallLocal(); document.getElementById("lsCloseBtn").click(); }
+                if(overlayVisible) { endCallLocal(); closeStudentChatUI(); }
             }
         });
 
@@ -1876,7 +1901,6 @@
                 let updatesToPerform = {};
                 let hasDeletes = false;
 
-                // 🆕 Check if panel is physically open and tab is active
                 let isPanelOpen = document.getElementById("lsPanel").style.display === "block";
                 let isTabActive = !document.hidden;
 
@@ -1884,7 +1908,6 @@
                     let m = msgs[msgId];
                     if (now - m.timestamp > twelveHoursInMs) { updatesToPerform[msgId] = null; hasDeletes = true; return; }
                     
-                    // 🆕 GHOST LISTENER FIX: Sirf tab Read mark karo jab panel actually khula ho aur tab samne ho
                     if(m.sender === 'admin' && m.status !== 'read' && isPanelOpen && isTabActive) { 
                         update(ref(db, `messages/${key}/${msgId}`), { status: 'read' }); 
                     }
@@ -1920,12 +1943,16 @@
             }
         });
 
+        // 🆕 LAST SEEN DISPLAY LOGIC
         onValue(currentStatusRef, (snapshot) => {
             const data = snapshot.val();
             if(data) {
                 if(data.admin_typing) { adminStatusBox.innerHTML = `<span style="color: #60a5fa;">Typing... ✍️</span>`; } 
                 else if(data.admin_status === 'online') { adminStatusBox.innerHTML = `<span style="color: #4ade80;">Online 🟢</span>`; } 
-                else { adminStatusBox.innerHTML = `<span style="color: #94a3b8;">Offline 🔴</span>`; }
+                else { 
+                    let lsText = data.admin_last_seen ? `Last seen ${formatLastSeen(data.admin_last_seen)}` : `Offline 🔴`;
+                    adminStatusBox.innerHTML = `<span style="color: #94a3b8;">${lsText}</span>`; 
+                }
             }
         });
     }
@@ -1946,12 +1973,19 @@
             }).catch(e => console.log(e));
 
             msgInput.value = ""; emojiPicker.classList.remove("active");
+            
+            // 🆕 KEYBOARD FIX: Message bhejne ke baad box khula rahega
+            msgInput.focus();
+
             update(ref(db, 'support_keys/' + activeSessionKey), { student_typing: false });
             setTimeout(() => { isSending = false; }, 300);
         }
     }
 
-    document.getElementById("studentSendBtn").addEventListener("click", sendStudentMessage);
+    // 🆕 KEYBOARD FIX: Click ki jagah mousedown aur touchstart (preventDefault ke sath)
+    document.getElementById("studentSendBtn").addEventListener("mousedown", (e) => { e.preventDefault(); sendStudentMessage(); });
+    document.getElementById("studentSendBtn").addEventListener("touchstart", (e) => { e.preventDefault(); sendStudentMessage(); });
+    
     msgInput.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); sendStudentMessage(); } });
     msgInput.addEventListener("input", () => {
         if(activeSessionKey) { update(ref(db, 'support_keys/' + activeSessionKey), { student_typing: true }); clearTimeout(studentTypingTimer); studentTypingTimer = setTimeout(() => { update(ref(db, 'support_keys/' + activeSessionKey), { student_typing: false }); }, 1500); }
