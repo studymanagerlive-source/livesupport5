@@ -502,7 +502,7 @@
             };
 
             peerConnection.onicecandidate = event => {
-                if (event.candidate) { push(ref(db, `calls/${currentKey}/iceCandidates/admin`), event.candidate.toJSON()); }
+                if (event.candidate) { push(ref(db, `calls/${currentKey}/iceCandidates/student`), event.candidate.toJSON()); }
             };
 
             const offerDescription = new RTCSessionDescription(offerData);
@@ -567,6 +567,12 @@
     function closeAdminChatUI() {
         if(currentKey) { update(ref(db, 'support_keys/' + currentKey), { admin_status: 'offline', admin_typing: false }); }
         currentKey = null;
+        
+        // 🆕 Ghost Listener Fix
+        if(currentMessagesRef) { off(currentMessagesRef); currentMessagesRef = null; }
+        if(currentStatusRef) { off(currentStatusRef); currentStatusRef = null; }
+        if(callStateRef) { off(callStateRef); callStateRef = null; }
+
         document.getElementById("mainChatArea").classList.remove("active-mobile");
         document.getElementById("chatTitleText").innerHTML = `<span><i class="fas fa-comments"></i> Select a key</span>`;
         document.getElementById("studentStatus").innerHTML = "";
@@ -579,10 +585,12 @@
     document.getElementById("endCallBtn").addEventListener("click", () => {
         if(currentKey) remove(ref(db, `calls/${currentKey}`));
         endCallLocal();
-        closeAdminChatUI(); // Manual cut hone par chat window bhi band hogi
+        closeAdminChatUI();
     });
 
     function endCallLocal() {
+        let wasInCall = (peerConnection !== null);
+
         document.getElementById("callOverlay").style.display = "none";
         document.getElementById("muteCallBtn").style.display = "none";
         document.getElementById("videoToggleBtn").style.display = "none";
@@ -607,6 +615,10 @@
         document.getElementById("localVideo").srcObject = null;
         document.getElementById("remoteAudio").volume = 1.0;
         document.getElementById("remoteVideoCall").volume = 1.0;
+
+        if (wasInCall) {
+            closeAdminChatUI();
+        }
     }
 
     function startCallTimer() {
@@ -680,7 +692,13 @@
             document.getElementById("loginScreen").style.display = "none";
             document.getElementById("dashboard").style.display = "flex";
             loadKeys();
-            requestNotificationPermission(); 
+            requestNotificationPermission(); // Asks for permission securely after user click
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const deepLinkKey = urlParams.get('key');
+            if (deepLinkKey) {
+                setTimeout(() => openChat(deepLinkKey), 400);
+            }
         } else {
             document.getElementById("loginErrorMsg").style.display = "block";
         }
@@ -737,13 +755,13 @@
         update(myKeyRef, { admin_status: 'online' });
         onDisconnect(myKeyRef).update({ admin_status: 'offline', admin_typing: false });
 
+        // 🆕 Ghost Listener Fix
         if(currentMessagesRef) off(currentMessagesRef);
         currentMessagesRef = ref(db, 'messages/' + key);
         
         if(currentStatusRef) off(currentStatusRef);
         currentStatusRef = ref(db, 'support_keys/' + key);
 
-        // --- 🆕 FIXED BUG: Listen for Incoming Calls from Student without auto-closing ---
         if(callStateRef) off(callStateRef);
         callStateRef = ref(db, `calls/${key}`);
         onValue(callStateRef, (snapshot) => {
@@ -751,7 +769,6 @@
             let overlayVisible = document.getElementById("callOverlay").style.display === "flex";
 
             if(!data) { 
-                // Agar call pehle chal rahi thi aur achanak cut ho gayi
                 if(overlayVisible) { endCallLocal(); closeAdminChatUI(); }
                 return; 
             }
