@@ -524,7 +524,6 @@
                 <button class="ls-emoji-btn" id="studentAttachBtn" title="Send Media/File"><i class="fas fa-paperclip"></i></button>
                 <input type="file" id="studentFileInput" accept="image/*,video/*,audio/*" style="display: none;">
                 <input type="text" id="studentMsgInput" placeholder="Type a message..." autocomplete="off" style="flex: 1; padding: 10px 15px; border-radius: 20px; border: none; background: #334155; color: white; outline: none;">
-                <!-- 🆕 KEYBOARD FIX: CHANGED TO TOUCHSTART/MOUSEDOWN -->
                 <button id="studentSendBtn" style="background: #25D366; border: none; width: 40px; height: 40px; border-radius: 50%; color: white; cursor: pointer; flex-shrink: 0;"><i class="fas fa-paper-plane"></i></button>
             </div>
         </div>
@@ -1351,7 +1350,7 @@
 <!-- 🆕 Firebase Live Support Logic -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-    import { getDatabase, ref, get, push, onValue, update, onDisconnect, off, remove, set, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+    import { getDatabase, ref, get, push, onValue, update, onDisconnect, remove, set, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyBUPIULkKxZx0d7sX6kag2Fa-nmkgjnDA8",
@@ -1373,15 +1372,18 @@
     let studentTypingTimer;
     
     let isSending = false;
-    let currentMessagesRef = null;
-    let currentStatusRef = null;
+    // 🆕 GHOST LISTENER FIX: Variables to store unsubscribe functions
+    let unsubMessages = null;
+    let unsubStatus = null;
+    let unsubCalls = null;
     let replyingToData = null;
+
+    let isAppVisible = true;
 
     // --- WEBRTC CALLING VARIABLES ---
     let localStream;
     let peerConnection;
-    let callStateRef = null;
-    let iceCandidatesRef = null;
+    let unsubIce = null;
     let callTimerInterval;
     let callSeconds = 0;
     
@@ -1399,8 +1401,9 @@
 
     // 🆕 VISIBILITY LISTENER (LAST SEEN SUPPORT)
     document.addEventListener('visibilitychange', () => {
+        isAppVisible = !document.hidden;
         if(activeSessionKey) {
-            if (document.hidden) {
+            if (!isAppVisible) {
                 update(ref(db, 'support_keys/' + activeSessionKey), { student_status: 'offline', student_typing: false, student_last_seen: serverTimestamp() });
             } else {
                 update(ref(db, 'support_keys/' + activeSessionKey), { student_status: 'online' });
@@ -1535,7 +1538,8 @@
 
             await set(ref(db, `calls/${activeSessionKey}`), callConfig);
 
-            onValue(ref(db, `calls/${activeSessionKey}`), async (snapshot) => {
+            if(unsubCalls) { unsubCalls(); unsubCalls = null; }
+            unsubCalls = onValue(ref(db, `calls/${activeSessionKey}`), async (snapshot) => {
                 const data = snapshot.val();
                 if (!data) return;
 
@@ -1550,8 +1554,8 @@
                 }
             });
 
-            iceCandidatesRef = ref(db, `calls/${activeSessionKey}/iceCandidates/admin`);
-            onValue(iceCandidatesRef, snapshot => {
+            if(unsubIce) { unsubIce(); unsubIce = null; }
+            unsubIce = onValue(ref(db, `calls/${activeSessionKey}/iceCandidates/admin`), snapshot => {
                 snapshot.forEach(childSnapshot => {
                     const candidate = new RTCIceCandidate(childSnapshot.val());
                     if(peerConnection) peerConnection.addIceCandidate(candidate);
@@ -1611,8 +1615,8 @@
             if(isVideoCall) document.getElementById("videoToggleBtn").style.display = "inline-block";
             startCallTimer();
 
-            iceCandidatesRef = ref(db, `calls/${activeSessionKey}/iceCandidates/admin`);
-            onValue(iceCandidatesRef, snapshot => {
+            if(unsubIce) { unsubIce(); unsubIce = null; }
+            unsubIce = onValue(ref(db, `calls/${activeSessionKey}/iceCandidates/admin`), snapshot => {
                 snapshot.forEach(childSnapshot => {
                     const candidate = new RTCIceCandidate(childSnapshot.val());
                     if(peerConnection) peerConnection.addIceCandidate(candidate);
@@ -1678,7 +1682,7 @@
 
         if (peerConnection) { peerConnection.close(); peerConnection = null; }
         if (localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; }
-        if (iceCandidatesRef) { off(iceCandidatesRef); }
+        if (unsubIce) { unsubIce(); unsubIce = null; }
 
         document.getElementById("remoteVideoCall").srcObject = null;
         document.getElementById("localVideo").srcObject = null;
@@ -1801,15 +1805,14 @@
     document.getElementById("lsCloseBtn").addEventListener("click", () => { 
         document.getElementById("lsPanel").style.display = "none"; 
         if(activeSessionKey) {
-            // 🆕 LAST SEEN UPDATE
             update(ref(db, 'support_keys/' + activeSessionKey), { student_status: 'offline', student_typing: false, student_last_seen: serverTimestamp() });
             activeSessionKey = null;
         }
 
-        // 🆕 Ghost Listener Fix
-        if(currentMessagesRef) { off(currentMessagesRef); currentMessagesRef = null; }
-        if(currentStatusRef) { off(currentStatusRef); currentStatusRef = null; }
-        if(callStateRef) { off(callStateRef); callStateRef = null; }
+        // 🆕 Ghost Listener Fix using Unsubscribe
+        if(unsubMessages) { unsubMessages(); unsubMessages = null; }
+        if(unsubStatus) { unsubStatus(); unsubStatus = null; }
+        if(unsubCalls) { unsubCalls(); unsubCalls = null; }
 
         document.getElementById("studentChatMessages").innerHTML = "";
         document.getElementById("studentKeyInput").value = ""; 
@@ -1854,21 +1857,18 @@
         const myKeyRef = ref(db, 'support_keys/' + key);
         update(myKeyRef, { student_status: 'online' });
         
-        // 🆕 LAST SEEN ON DISCONNECT
         onDisconnect(myKeyRef).update({ student_status: 'offline', student_typing: false, student_last_seen: serverTimestamp() });
 
         const msgBox = document.getElementById("studentChatMessages");
         const adminStatusBox = document.getElementById("adminStatusDisplay");
 
-        if(currentMessagesRef) off(currentMessagesRef);
-        currentMessagesRef = ref(db, 'messages/' + key);
+        // CLEAN PREVIOUS LISTENERS
+        if(unsubMessages) { unsubMessages(); unsubMessages = null; }
+        if(unsubStatus) { unsubStatus(); unsubStatus = null; }
+        if(unsubCalls) { unsubCalls(); unsubCalls = null; }
 
-        if(currentStatusRef) off(currentStatusRef);
-        currentStatusRef = ref(db, 'support_keys/' + key);
-
-        if(callStateRef) off(callStateRef);
-        callStateRef = ref(db, `calls/${key}`);
-        onValue(callStateRef, (snapshot) => {
+        // LISTEN FOR CALLS
+        unsubCalls = onValue(ref(db, `calls/${key}`), (snapshot) => {
             const data = snapshot.val();
             let overlayVisible = document.getElementById("callOverlay").style.display === "flex";
 
@@ -1892,7 +1892,8 @@
             }
         });
 
-        onValue(currentMessagesRef, (snapshot) => {
+        // LISTEN FOR MESSAGES
+        unsubMessages = onValue(ref(db, `messages/${key}`), (snapshot) => {
             const msgs = snapshot.val();
             let newHtmlString = ""; 
             if(msgs) {
@@ -1902,13 +1903,14 @@
                 let hasDeletes = false;
 
                 let isPanelOpen = document.getElementById("lsPanel").style.display === "block";
-                let isTabActive = !document.hidden;
+                let isCorrectKey = (activeSessionKey === key);
 
                 Object.keys(msgs).forEach(msgId => {
                     let m = msgs[msgId];
                     if (now - m.timestamp > twelveHoursInMs) { updatesToPerform[msgId] = null; hasDeletes = true; return; }
                     
-                    if(m.sender === 'admin' && m.status !== 'read' && isPanelOpen && isTabActive) { 
+                    // 🆕 100% BULLETPROOF FIX: Sirf tab Read mark karo jab panel open ho aur APP samne VISIBLE ho
+                    if(m.sender === 'admin' && m.status !== 'read' && isPanelOpen && isAppVisible && isCorrectKey) { 
                         update(ref(db, `messages/${key}/${msgId}`), { status: 'read' }); 
                     }
 
@@ -1943,8 +1945,8 @@
             }
         });
 
-        // 🆕 LAST SEEN DISPLAY LOGIC
-        onValue(currentStatusRef, (snapshot) => {
+        // LISTEN FOR STATUS
+        unsubStatus = onValue(ref(db, `support_keys/${key}`), (snapshot) => {
             const data = snapshot.val();
             if(data) {
                 if(data.admin_typing) { adminStatusBox.innerHTML = `<span style="color: #60a5fa;">Typing... ✍️</span>`; } 
@@ -1974,7 +1976,7 @@
 
             msgInput.value = ""; emojiPicker.classList.remove("active");
             
-            // 🆕 KEYBOARD FIX: Message bhejne ke baad box khula rahega
+            // 🆕 KEYBOARD FIX: Keep focus after sending
             msgInput.focus();
 
             update(ref(db, 'support_keys/' + activeSessionKey), { student_typing: false });
@@ -1982,7 +1984,7 @@
         }
     }
 
-    // 🆕 KEYBOARD FIX: Click ki jagah mousedown aur touchstart (preventDefault ke sath)
+    // 🆕 KEYBOARD FIX: Change click to mousedown & touchstart
     document.getElementById("studentSendBtn").addEventListener("mousedown", (e) => { e.preventDefault(); sendStudentMessage(); });
     document.getElementById("studentSendBtn").addEventListener("touchstart", (e) => { e.preventDefault(); sendStudentMessage(); });
     
