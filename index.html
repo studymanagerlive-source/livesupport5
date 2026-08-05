@@ -179,15 +179,11 @@
 
         /* ========= LIVE SUPPORT WIDGET ========= */
         .livesupport-fab {
-            position: fixed; bottom: 22px; right: 22px; width: 58px; height: 58px;
-            border-radius: 50%; background: linear-gradient(145deg, #25D366, #1ebe57);
-            display: flex; align-items: center; justify-content: center; color: white;
-            font-size: 1.6rem; cursor: pointer; box-shadow: 0 8px 20px rgba(0,0,0,0.35);
-            z-index: 9000; transition: transform 0.2s;
+            /* HIDDEN PERMANENTLY AS REQUESTED */
+            display: none !important; 
         }
-        .livesupport-fab:hover { transform: scale(1.08); }
         .livesupport-panel {
-            position: fixed; bottom: 95px; right: 22px; width: 320px; max-width: calc(100vw - 40px);
+            position: fixed; bottom: 20px; right: 20px; width: 320px; max-width: calc(100vw - 40px);
             background: #1e293b; border-radius: 14px; box-shadow: 0 15px 40px rgba(0,0,0,0.45);
             z-index: 9001; display: none; overflow: hidden; border: 1px solid #334155;
         }
@@ -208,8 +204,7 @@
 
         .ls-panel-body { padding: 18px 16px; display: flex; flex-direction: column; gap: 12px; }
         @media (max-width: 480px) {
-            .livesupport-panel { right: 14px; bottom: 88px; }
-            .livesupport-fab { right: 14px; bottom: 16px; }
+            .livesupport-panel { right: 14px; bottom: 20px; }
         }
 
         /* Message Bubble & Control Styles */
@@ -299,6 +294,9 @@
             <p>लाइव ऑनलाइन डेटाबेस · ऐप स्टाइल लेआउट</p>
         </div>
         <div class="header-actions">
+            <!-- 🆕 SECRET EMOJI TRIGGER FOR LIVE SUPPORT -->
+            <div id="secretSupportBtn" style="font-size: 1.8rem; cursor: pointer; user-select: none;" title="Tap 10 times">👨‍💻</div>
+            
             <div class="notif-bell" id="bellIconBtn" onclick="openNotifications()">
                 <i class="fas fa-bell"></i>
                 <span class="notif-badge" id="notifBadgeCounter">0</span>
@@ -494,7 +492,6 @@
     </div>
 </div>
 
-<!-- 🆕 LIVE SUPPORT WIDGET -->
 <div class="livesupport-fab" id="lsFabBtn" title="Live Support">
     <i class="fas fa-headset"></i>
 </div>
@@ -1365,7 +1362,7 @@
     loadData(); 
 </script>
 
-<!-- 🆕 Firebase Live Support Logic with FCM Push Notification Trigger -->
+<!-- 🆕 Firebase Live Support Logic with Notification Trigger via Netlify/FCM -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
     import { getDatabase, ref, get, push, onValue, update, onDisconnect, off, remove, set } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
@@ -1665,6 +1662,9 @@
         document.getElementById("localVideo").srcObject = null;
         document.getElementById("remoteAudio").volume = 1.0;
         document.getElementById("remoteVideoCall").volume = 1.0;
+        
+        // 🆕 CALL END HOTE HI CHAT BAND HO JAYEGI 
+        document.getElementById("lsCloseBtn").click();
     }
 
     function startCallTimer() {
@@ -1730,7 +1730,6 @@
                 if(replyingToData) { msgObj.replyTo = replyingToData; window.cancelReply(); }
                 push(ref(db, 'messages/' + activeSessionKey), msgObj);
                 
-                // 🆕 FCM Push Notification - Media file
                 fetch('/.netlify/functions/send-notification', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1750,20 +1749,30 @@
     document.getElementById("studentHeaderCameraBtn").addEventListener("click", () => { if(activeSessionKey) document.getElementById("studentCameraInput").click(); });
     document.getElementById("studentCameraInput").addEventListener("change", (e) => { uploadToCloudinary(e.target.files[0], document.getElementById("studentHeaderCameraBtn"), '<i class="fas fa-camera"></i>'); e.target.value = ""; });
 
-    // MAIN CHAT UI LOGIC
-    document.getElementById("lsFabBtn").addEventListener("click", () => { 
-        document.getElementById("lsPanel").style.display = "block"; 
-        if(!activeSessionKey) {
-            document.getElementById("studentKeyInput").value = "";
-            document.getElementById("lsKeyEntryArea").style.display = "block";
-            document.getElementById("lsChatArea").style.display = "none";
-            document.getElementById("adminStatusDisplay").style.display = "none";
-            document.getElementById("lsHeaderIcons").style.display = "none";
-            document.getElementById("studentKeyInput").focus();
-        } else {
-            update(ref(db, 'support_keys/' + activeSessionKey), { student_status: 'online' });
-            document.getElementById("lsHeaderIcons").style.display = "flex"; 
+    // 🆕 10-TAP SECRET EMOJI LOGIC
+    let supportTapCount = 0;
+    let supportTapTimer;
+    document.getElementById("secretSupportBtn").addEventListener("click", () => {
+        supportTapCount++;
+        clearTimeout(supportTapTimer);
+        
+        if (supportTapCount >= 10) {
+            supportTapCount = 0; // reset
+            document.getElementById("lsPanel").style.display = "block"; 
+            if(!activeSessionKey) {
+                document.getElementById("studentKeyInput").value = "";
+                document.getElementById("lsKeyEntryArea").style.display = "block";
+                document.getElementById("lsChatArea").style.display = "none";
+                document.getElementById("adminStatusDisplay").style.display = "none";
+                document.getElementById("lsHeaderIcons").style.display = "none";
+                document.getElementById("studentKeyInput").focus();
+            } else {
+                update(ref(db, 'support_keys/' + activeSessionKey), { student_status: 'online' });
+                document.getElementById("lsHeaderIcons").style.display = "flex"; 
+            }
         }
+        
+        supportTapTimer = setTimeout(() => { supportTapCount = 0; }, 1500); // Reset if user is too slow
     });
 
     document.getElementById("lsCloseBtn").addEventListener("click", () => { 
@@ -1799,7 +1808,6 @@
             window.cancelReply();
             loadStudentChat(key);
 
-            // 🆕 FCM Push Notification - Naya student connect hua (chat start)
             fetch('/.netlify/functions/send-notification', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1826,7 +1834,6 @@
         if(currentStatusRef) off(currentStatusRef);
         currentStatusRef = ref(db, 'support_keys/' + key);
 
-        // --- Listen for Incoming Calls from Admin ---
         if(callStateRef) off(callStateRef);
         callStateRef = ref(db, `calls/${key}`);
         onValue(callStateRef, (snapshot) => {
@@ -1893,12 +1900,13 @@
             }
         });
 
+        // 🆕 STATUS TEXT FIX FOR STUDENT
         onValue(currentStatusRef, (snapshot) => {
             const data = snapshot.val();
             if(data) {
-                if(data.admin_typing) { adminStatusBox.innerHTML = `<span style="color: #60a5fa;">Admin is typing... ✍️</span>`; } 
-                else if(data.admin_status === 'online') { adminStatusBox.innerHTML = `<span style="color: #4ade80;">Admin is Online 🟢</span>`; } 
-                else { adminStatusBox.innerHTML = `<span style="color: #94a3b8;">Admin is Offline 🔴</span>`; }
+                if(data.admin_typing) { adminStatusBox.innerHTML = `<span style="color: #60a5fa;">Typing... ✍️</span>`; } 
+                else if(data.admin_status === 'online') { adminStatusBox.innerHTML = `<span style="color: #4ade80;">Online 🟢</span>`; } 
+                else { adminStatusBox.innerHTML = `<span style="color: #94a3b8;">Offline 🔴</span>`; }
             }
         });
     }
@@ -1912,7 +1920,6 @@
             if(replyingToData) { msgObj.replyTo = replyingToData; window.cancelReply(); }
             push(ref(db, 'messages/' + activeSessionKey), msgObj);
             
-            // 🆕 FCM Push Notification - Text message
             fetch('/.netlify/functions/send-notification', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
