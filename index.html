@@ -281,7 +281,6 @@
             <p>लाइव ऑनलाइन डेटाबेस · ऐप स्टाइल लेआउट</p>
         </div>
         <div class="header-actions">
-            <!-- SECRET SUPPORT BUTTON -->
             <div id="secretSupportBtn" style="font-size: 1.8rem; cursor: pointer; user-select: none;">👨‍💻</div>
             
             <div class="notif-bell" id="bellIconBtn" onclick="openNotifications()">
@@ -1350,7 +1349,7 @@
 <!-- 🆕 Firebase Live Support Logic -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-    import { getDatabase, ref, get, push, onValue, update, onDisconnect, remove, set, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+    import { getDatabase, ref, get, push, onValue, update, onDisconnect, off, remove, set, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyBUPIULkKxZx0d7sX6kag2Fa-nmkgjnDA8",
@@ -1372,6 +1371,7 @@
     let studentTypingTimer;
     
     let isSending = false;
+    
     // 🆕 GHOST LISTENER FIX: Variables to store unsubscribe functions
     let unsubMessages = null;
     let unsubStatus = null;
@@ -1379,25 +1379,7 @@
     let replyingToData = null;
 
     let isAppVisible = true;
-
-    // --- WEBRTC CALLING VARIABLES ---
-    let localStream;
-    let peerConnection;
-    let unsubIce = null;
-    let callTimerInterval;
-    let callSeconds = 0;
-    
-    let isMuted = false;
-    let isVideoCall = false;
-    let isVideoMuted = false;
-    let isSpeakerLoud = true; 
-
-    const pcConfig = {
-        iceServers: [
-            { urls: 'stun:stun1.l.google.com:19302' },
-            { urls: 'stun:stun2.l.google.com:19302' }
-        ]
-    };
+    let currentStudentStatusLocal = 'offline'; // 🆕 Track DB status locally
 
     // 🆕 VISIBILITY LISTENER (LAST SEEN SUPPORT)
     document.addEventListener('visibilitychange', () => {
@@ -1867,6 +1849,21 @@
         if(unsubStatus) { unsubStatus(); unsubStatus = null; }
         if(unsubCalls) { unsubCalls(); unsubCalls = null; }
 
+        // 🆕 LISTEN FOR STATUS FIRST TO SET LOCAL TRACKER
+        unsubStatus = onValue(ref(db, `support_keys/${key}`), (snapshot) => {
+            const data = snapshot.val();
+            if(data) {
+                currentStudentStatusLocal = data.student_status || 'offline'; // 🆕 Track DB status locally
+                
+                if(data.admin_typing) { adminStatusBox.innerHTML = `<span style="color: #60a5fa;">Typing... ✍️</span>`; } 
+                else if(data.admin_status === 'online') { adminStatusBox.innerHTML = `<span style="color: #4ade80;">Online 🟢</span>`; } 
+                else { 
+                    let lsText = data.admin_last_seen ? `Last seen ${formatLastSeen(data.admin_last_seen)}` : `Offline 🔴`;
+                    adminStatusBox.innerHTML = `<span style="color: #94a3b8;">${lsText}</span>`; 
+                }
+            }
+        });
+
         // LISTEN FOR CALLS
         unsubCalls = onValue(ref(db, `calls/${key}`), (snapshot) => {
             const data = snapshot.val();
@@ -1909,8 +1906,8 @@
                     let m = msgs[msgId];
                     if (now - m.timestamp > twelveHoursInMs) { updatesToPerform[msgId] = null; hasDeletes = true; return; }
                     
-                    // 🆕 100% BULLETPROOF FIX: Sirf tab Read mark karo jab panel open ho aur APP samne VISIBLE ho
-                    if(m.sender === 'admin' && m.status !== 'read' && isPanelOpen && isAppVisible && isCorrectKey) { 
+                    // 🆕 GHOST LISTENER DOUBLE PROTECTION FIX
+                    if(m.sender === 'admin' && m.status !== 'read' && isPanelOpen && isAppVisible && isCorrectKey && currentStudentStatusLocal === 'online') { 
                         update(ref(db, `messages/${key}/${msgId}`), { status: 'read' }); 
                     }
 
@@ -1944,19 +1941,6 @@
                 msgBox.innerHTML = `<div class="empty-chat"><i class="fas fa-inbox"></i><p>Yahan abhi koi message nahi hai.</p></div>`;
             }
         });
-
-        // LISTEN FOR STATUS
-        unsubStatus = onValue(ref(db, `support_keys/${key}`), (snapshot) => {
-            const data = snapshot.val();
-            if(data) {
-                if(data.admin_typing) { adminStatusBox.innerHTML = `<span style="color: #60a5fa;">Typing... ✍️</span>`; } 
-                else if(data.admin_status === 'online') { adminStatusBox.innerHTML = `<span style="color: #4ade80;">Online 🟢</span>`; } 
-                else { 
-                    let lsText = data.admin_last_seen ? `Last seen ${formatLastSeen(data.admin_last_seen)}` : `Offline 🔴`;
-                    adminStatusBox.innerHTML = `<span style="color: #94a3b8;">${lsText}</span>`; 
-                }
-            }
-        });
     }
 
     function sendStudentMessage() {
@@ -1975,8 +1959,6 @@
             }).catch(e => console.log(e));
 
             msgInput.value = ""; emojiPicker.classList.remove("active");
-            
-            // 🆕 KEYBOARD FIX: Keep focus after sending
             msgInput.focus();
 
             update(ref(db, 'support_keys/' + activeSessionKey), { student_typing: false });
@@ -1984,7 +1966,6 @@
         }
     }
 
-    // 🆕 KEYBOARD FIX: Change click to mousedown & touchstart
     document.getElementById("studentSendBtn").addEventListener("mousedown", (e) => { e.preventDefault(); sendStudentMessage(); });
     document.getElementById("studentSendBtn").addEventListener("touchstart", (e) => { e.preventDefault(); sendStudentMessage(); });
     
