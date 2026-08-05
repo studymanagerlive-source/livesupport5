@@ -183,7 +183,7 @@
             display: none !important; 
         }
         .livesupport-panel {
-            position: fixed; bottom: 20px; right: 20px; width: 320px; max-width: calc(100vw - 40px);
+            position: fixed; bottom: 20px; right: 20px; width: 340px; max-width: calc(100vw - 30px);
             background: #1e293b; border-radius: 14px; box-shadow: 0 15px 40px rgba(0,0,0,0.45);
             z-index: 9001; display: none; overflow: hidden; border: 1px solid #334155;
         }
@@ -203,8 +203,16 @@
         .ls-action-icon.video:hover { color: #a855f7; }
 
         .ls-panel-body { padding: 18px 16px; display: flex; flex-direction: column; gap: 12px; }
+        
+        /* 🆕 NEW CSS FIX FOR MOBILE CENTERED CHAT */
         @media (max-width: 480px) {
-            .livesupport-panel { right: 14px; bottom: 20px; }
+            .livesupport-panel { 
+                right: 15px; 
+                left: 15px; 
+                bottom: 20px; 
+                width: auto; 
+                max-width: none; 
+            }
         }
 
         /* Message Bubble & Control Styles */
@@ -294,8 +302,8 @@
             <p>लाइव ऑनलाइन डेटाबेस · ऐप स्टाइल लेआउट</p>
         </div>
         <div class="header-actions">
-            <!-- 🆕 SECRET EMOJI TRIGGER FOR LIVE SUPPORT -->
-            <div id="secretSupportBtn" style="font-size: 1.8rem; cursor: pointer; user-select: none;" title="Tap 10 times">👨‍💻</div>
+            <!-- 🆕 HIDDEN TOOLTIP & UPDATED EMOJI TRIGGER -->
+            <div id="secretSupportBtn" style="font-size: 1.8rem; cursor: pointer; user-select: none;">👨‍💻</div>
             
             <div class="notif-bell" id="bellIconBtn" onclick="openNotifications()">
                 <i class="fas fa-bell"></i>
@@ -405,7 +413,7 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <input type="text" id="newSectionPassword" placeholder="पासवर्ड (प्राइवेट रखने के लिए, वर्ना खाली छोड़ें)">
+                    <input type="text" id="newSectionPassword" placeholder="पासवर्ड (प्राइवेट रखने के लिए, वर्ना খালি छोड़ें)">
                 </div>
                 <div class="form-group" style="width: 100%;">
                     <input type="text" id="newSectionIcon" placeholder="आइकॉन क्लास या direct Image URL पेस्ट करें">
@@ -1638,6 +1646,9 @@
     });
 
     function endCallLocal() {
+        // 🆕 NEW FIX: Only act as a call end if we were actually IN a call.
+        let wasInCall = (peerConnection !== null);
+
         document.getElementById("callOverlay").style.display = "none";
         document.getElementById("muteCallBtn").style.display = "none";
         document.getElementById("videoToggleBtn").style.display = "none";
@@ -1664,7 +1675,9 @@
         document.getElementById("remoteVideoCall").volume = 1.0;
         
         // 🆕 CALL END HOTE HI CHAT BAND HO JAYEGI 
-        document.getElementById("lsCloseBtn").click();
+        if (wasInCall) {
+            document.getElementById("lsCloseBtn").click();
+        }
     }
 
     function startCallTimer() {
