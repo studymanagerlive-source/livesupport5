@@ -1600,6 +1600,15 @@
 
             await update(ref(db, `calls/${activeSessionKey}`), callConfig);
 
+            // 🆕 FIX: Receiver (jo call accept kar raha hai) ka UI turant update karo,
+            // isse pehle iska koi code nahi tha isliye "Connecting..." atka reh jaata tha
+            // aur mute/video/speaker buttons kabhi show nahi hote the.
+            document.getElementById("callStatusText").innerText = isVideoCall ? "" : "In Call (Live)";
+            document.getElementById("muteCallBtn").style.display = "inline-block";
+            document.getElementById("speakerCallBtn").style.display = "inline-block";
+            if(isVideoCall) document.getElementById("videoToggleBtn").style.display = "inline-block";
+            startCallTimer();
+
             if(unsubIce) { unsubIce(); unsubIce = null; }
             unsubIce = onValue(ref(db, `calls/${activeSessionKey}/iceCandidates/admin`), snapshot => {
                 snapshot.forEach(childSnapshot => {
