@@ -1803,7 +1803,9 @@
         supportTapTimer = setTimeout(() => { supportTapCount = 0; }, 1500); 
     });
 
-    document.getElementById("lsCloseBtn").addEventListener("click", () => { 
+    // 🆕 Chat session ko poori tarah band karta hai (session key clear, sab listener hata, key-entry screen pe reset).
+    // Isse dobara chat window kholne ke liye HAMESHA key dalni padegi — chahe close button se ho, ya call cut hone se.
+    function closeSupportSessionFully() {
         document.getElementById("lsPanel").style.display = "none"; 
         if(activeSessionKey) {
             update(ref(db, 'support_keys/' + activeSessionKey), { student_status: 'offline', student_typing: false, student_last_seen: serverTimestamp() });
@@ -1824,7 +1826,9 @@
         document.getElementById("lsKeyEntryArea").style.display = "block";
         emojiPicker.classList.remove("active");
         window.cancelReply();
-    });
+    }
+
+    document.getElementById("lsCloseBtn").addEventListener("click", closeSupportSessionFully);
 
     document.getElementById("verifyKeyBtn").addEventListener("click", async () => {
         const key = document.getElementById("studentKeyInput").value.trim();
@@ -1889,12 +1893,13 @@
             if(!data || data.status === 'ended') { 
                 if(overlayVisible) { 
                     endCallLocal(); 
-                    // 🆕 Call cut hote hi student ki chat window auto-close ho jaye
-                    document.getElementById("lsPanel").style.display = "none";
+                    // 🆕 Call cut hote hi (chahe admin kaate ya student khud) poora chat session
+                    // band ho jaye — dobara kholne ke liye key dalni hi padegi.
+                    closeSupportSessionFully();
                 }
                 return; 
             }
-            
+
             // Handle INCOMING call from Admin
             if(data.caller === 'admin' && data.status === 'calling') {
                 document.getElementById("callOverlay").style.display = "flex";
