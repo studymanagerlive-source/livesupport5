@@ -163,8 +163,8 @@
         /* FOOTER WITH VISITOR BADGE STYLE */
         .site-footer { margin-top: 2rem; background: #0f172a; text-align: center; padding: 1.2rem 1rem; border-radius: 8px; color: #94a3b8; border-top: 2px solid #f97316; font-size: 0.85rem; }
 
-        /* ===== AUDIO / VIDEO CALL OVERLAY CSS ===== */
-        #callOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.95); z-index: 9999; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        /* ===== AUDIO / VIDEO CALL OVERLAY CSS (FIXED Z-INDEX) ===== */
+        #callOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.95); z-index: 999999; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
         #remoteVideoCall { display: none; width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; z-index: 1; }
         #localVideo { display: none; width: 110px; height: 160px; object-fit: cover; position: absolute; bottom: 120px; right: 20px; z-index: 2; border-radius: 12px; border: 2px solid white; box-shadow: 0 8px 16px rgba(0,0,0,0.5); }
         .call-box { text-align: center; color: white; display: flex; flex-direction: column; align-items: center; z-index: 3; transition: all 0.3s ease; }
@@ -281,6 +281,7 @@
             <p>लाइव ऑनलाइन डेटाबेस · ऐप स्टाइल लेआउट</p>
         </div>
         <div class="header-actions">
+            <!-- SECRET SUPPORT BUTTON -->
             <div id="secretSupportBtn" style="font-size: 1.8rem; cursor: pointer; user-select: none;">👨‍💻</div>
             
             <div class="notif-bell" id="bellIconBtn" onclick="openNotifications()">
@@ -1379,7 +1380,7 @@
     let isAppVisible = true;
     let currentAdminStatusLocal = 'offline'; 
 
-    // --- 🆕 WEBRTC CALLING VARIABLES (RE-ADDED & FIXED!) ---
+    // --- 🆕 WEBRTC CALLING VARIABLES ---
     let localStream = null;
     let peerConnection = null;
     let unsubIce = null;
@@ -1398,7 +1399,6 @@
         ]
     };
 
-    // 🆕 VISIBILITY LISTENER
     document.addEventListener('visibilitychange', () => {
         isAppVisible = !document.hidden;
         if(activeSessionKey) {
@@ -1448,7 +1448,6 @@
         if(confirm("Delete this message permanently?")) { remove(ref(db, `messages/${activeSessionKey}/${msgId}`)); }
     };
 
-    // --- WEBRTC MEDIA CONTROLS ---
     document.getElementById("muteCallBtn").addEventListener("click", () => {
         if(localStream && localStream.getAudioTracks().length > 0) {
             isMuted = !isMuted;
@@ -1496,6 +1495,7 @@
         }
     });
 
+    // 🆕 UNIFIED CALL LISTENER LOGIC
     document.getElementById("studentCallBtn").addEventListener("click", () => { if(activeSessionKey) initiateCall('audio'); });
     document.getElementById("studentVideoCallBtn").addEventListener("click", () => { if(activeSessionKey) initiateCall('video'); });
 
@@ -1511,8 +1511,9 @@
 
             peerConnection.ontrack = event => {
                 if(isVideoCall) {
-                    document.getElementById("remoteVideoCall").srcObject = event.streams[0];
-                    document.getElementById("remoteVideoCall").style.display = "block";
+                    let remoteVid = document.getElementById("remoteVideoCall");
+                    remoteVid.srcObject = event.streams[0];
+                    remoteVid.style.display = "block";
                     document.getElementById("callPulse").style.display = "none";
                 } else {
                     document.getElementById("remoteAudio").srcObject = event.streams[0];
@@ -1534,22 +1535,6 @@
             };
 
             await set(ref(db, `calls/${activeSessionKey}`), callConfig);
-
-            if(unsubCalls) { unsubCalls(); unsubCalls = null; }
-            unsubCalls = onValue(ref(db, `calls/${activeSessionKey}`), async (snapshot) => {
-                const data = snapshot.val();
-                if (!data) return;
-
-                if (data.status === 'ongoing' && data.answer && !peerConnection.currentRemoteDescription) {
-                    document.getElementById("callStatusText").innerText = isVideoCall ? "" : "In Call (Live)";
-                    document.getElementById("muteCallBtn").style.display = "inline-block";
-                    document.getElementById("speakerCallBtn").style.display = "inline-block"; 
-                    if(isVideoCall) document.getElementById("videoToggleBtn").style.display = "inline-block";
-                    startCallTimer();
-                    const answerDescription = new RTCSessionDescription(data.answer);
-                    await peerConnection.setRemoteDescription(answerDescription);
-                }
-            });
 
             if(unsubIce) { unsubIce(); unsubIce = null; }
             unsubIce = onValue(ref(db, `calls/${activeSessionKey}/iceCandidates/admin`), snapshot => {
@@ -1587,8 +1572,9 @@
 
             peerConnection.ontrack = event => {
                 if(isVideoCall) {
-                    document.getElementById("remoteVideoCall").srcObject = event.streams[0];
-                    document.getElementById("remoteVideoCall").style.display = "block";
+                    let remoteVid = document.getElementById("remoteVideoCall");
+                    remoteVid.srcObject = event.streams[0];
+                    remoteVid.style.display = "block";
                     document.getElementById("callPulse").style.display = "none";
                 } else {
                     document.getElementById("remoteAudio").srcObject = event.streams[0];
@@ -1613,13 +1599,6 @@
             };
 
             await update(ref(db, `calls/${activeSessionKey}`), callConfig);
-            
-            document.getElementById("callStatusText").innerText = isVideoCall ? "" : "In Call (Live)";
-            document.getElementById("callPulse").style.borderColor = "#25D366";
-            document.getElementById("muteCallBtn").style.display = "inline-block";
-            document.getElementById("speakerCallBtn").style.display = "inline-block";
-            if(isVideoCall) document.getElementById("videoToggleBtn").style.display = "inline-block";
-            startCallTimer();
 
             if(unsubIce) { unsubIce(); unsubIce = null; }
             unsubIce = onValue(ref(db, `calls/${activeSessionKey}/iceCandidates/admin`), snapshot => {
@@ -1666,19 +1645,13 @@
         }
     }
 
-    function closeStudentChatUI() {
-        document.getElementById("lsCloseBtn").click();
-    }
-
     document.getElementById("endCallBtn").addEventListener("click", () => {
-        if(activeSessionKey) remove(ref(db, `calls/${activeSessionKey}`));
+        if(activeSessionKey) remove(ref(db, `calls/${activeSessionKey}`)); // Instant network wipe
         endCallLocal();
-        closeStudentChatUI(); 
     });
 
+    // 🆕 REMOVED CHAT CLOSURE FROM END CALL
     function endCallLocal() {
-        let wasInCall = (peerConnection !== null);
-
         document.getElementById("callOverlay").style.display = "none";
         document.getElementById("muteCallBtn").style.display = "none";
         document.getElementById("videoToggleBtn").style.display = "none";
@@ -1691,22 +1664,31 @@
         callSeconds = 0;
         isVideoCall = false;
 
-        isMuted = false; document.querySelector("#muteCallBtn i").className = "fas fa-microphone"; document.getElementById("muteCallBtn").style.background = "#475569";
-        isVideoMuted = false; document.querySelector("#videoToggleBtn i").className = "fas fa-video"; document.getElementById("videoToggleBtn").style.background = "#475569";
-        isSpeakerLoud = true; document.querySelector("#speakerCallBtn i").className = "fas fa-volume-up"; document.getElementById("speakerCallBtn").style.background = "#475569";
+        isMuted = false; 
+        let muteIcon = document.querySelector("#muteCallBtn i");
+        if(muteIcon) muteIcon.className = "fas fa-microphone"; 
+        document.getElementById("muteCallBtn").style.background = "#475569";
+        
+        isVideoMuted = false; 
+        let videoIcon = document.querySelector("#videoToggleBtn i");
+        if(videoIcon) videoIcon.className = "fas fa-video"; 
+        document.getElementById("videoToggleBtn").style.background = "#475569";
+        
+        isSpeakerLoud = true; 
+        let speakerIcon = document.querySelector("#speakerCallBtn i");
+        if(speakerIcon) speakerIcon.className = "fas fa-volume-up"; 
+        document.getElementById("speakerCallBtn").style.background = "#475569";
 
         if (peerConnection) { peerConnection.close(); peerConnection = null; }
         if (localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; }
         if (unsubIce) { unsubIce(); unsubIce = null; }
 
-        document.getElementById("remoteVideoCall").srcObject = null;
-        document.getElementById("localVideo").srcObject = null;
-        document.getElementById("remoteAudio").volume = 1.0;
-        document.getElementById("remoteVideoCall").volume = 1.0;
-        
-        if (wasInCall) {
-            closeStudentChatUI();
-        }
+        let rVid = document.getElementById("remoteVideoCall");
+        if(rVid) { rVid.srcObject = null; rVid.volume = 1.0; }
+        let lVid = document.getElementById("localVideo");
+        if(lVid) lVid.srcObject = null;
+        let rAud = document.getElementById("remoteAudio");
+        if(rAud) rAud.volume = 1.0;
     }
 
     function startCallTimer() {
@@ -1721,7 +1703,6 @@
         }, 1000);
     }
 
-    // EMOJI LOGIC
     const emojis = ["😀","😃","😄","😁","😆","😅","😂","🤣","😊","😇","🙂","🙃","😉","😌","😍","🥰","😘","😋","😛","😝","😜","🤪","🤓","😎","🤩","🥳","😏","😒","😞","😔","😟","😕","🙁","☹️","😣","😖","😫","😩","🥺","😢","😭","😤","😠","😡","🤯","😳","😱","😨","😰","😥","😓","🤗","🤔","🤭","🤫","😶","😐","😑","😬","🙄","😯","😦","😧","😮","😲","🥱","😴","🤤","😪","😵","🤐","🥴","🤢","🤮","🤧","😷","🤒","🤕","🤑","🤠","😈","👿","👻","💀","👽","👾","🤖","🎃","👍","👎","👏","🙌","👐","🤲","🤝","🙏","✌️","🤞","👆","👇","👈","👉","🔥","💯","❤️","💔"];
     const emojiPicker = document.getElementById("studentEmojiPicker");
     const msgInput = document.getElementById("studentMsgInput");
@@ -1737,7 +1718,6 @@
         if (!e.target.closest("#studentEmojiBtn") && !e.target.closest("#studentEmojiPicker")) { emojiPicker.classList.remove("active"); }
     });
 
-    // CLEAR CHAT
     document.getElementById("studentClearChatBtn").addEventListener("click", () => {
         if(!activeSessionKey) return;
         let confirmClear = confirm("Kya aap sach mein saari chat delete karna chahte hain?");
@@ -1748,7 +1728,6 @@
         }
     });
 
-    // CLOUDINARY MEDIA UPLOAD LOGIC
     async function uploadToCloudinary(file, loadingBtnElement, originalIconClass) {
         if(!file) return;
         if(file.size > 15 * 1024 * 1024) { alert("File size bahut badi hai!"); return; }
@@ -1892,15 +1871,18 @@
             }
         });
 
-        unsubCalls = onValue(ref(db, `calls/${key}`), (snapshot) => {
+        // 🆕 UNIFIED CALL LISTENER
+        unsubCalls = onValue(ref(db, `calls/${key}`), async (snapshot) => {
             const data = snapshot.val();
             let overlayVisible = document.getElementById("callOverlay").style.display === "flex";
 
-            if(!data) { 
-                if(overlayVisible) { endCallLocal(); closeStudentChatUI(); }
+            // If call is rejected, ended, or node deleted -> Cleanup UI instantly
+            if(!data || data.status === 'ended') { 
+                if(overlayVisible) { endCallLocal(); }
                 return; 
             }
             
+            // Handle INCOMING call from Admin
             if(data.caller === 'admin' && data.status === 'calling') {
                 document.getElementById("callOverlay").style.display = "flex";
                 document.getElementById("callPulse").style.display = "flex";
@@ -1911,8 +1893,16 @@
                 document.getElementById("videoToggleBtn").style.display = "none";
                 document.getElementById("speakerCallBtn").style.display = "none";
                 document.getElementById("acceptCallBtn").onclick = () => answerCall(data.offer, data.callType);
-            } else if (data.status === 'ended') {
-                if(overlayVisible) { endCallLocal(); closeStudentChatUI(); }
+            } 
+            // Handle OUTGOING call answered by Admin
+            else if (data.status === 'ongoing' && data.answer && peerConnection && !peerConnection.currentRemoteDescription) {
+                document.getElementById("callStatusText").innerText = isVideoCall ? "" : "In Call (Live)";
+                document.getElementById("muteCallBtn").style.display = "inline-block";
+                document.getElementById("speakerCallBtn").style.display = "inline-block"; 
+                if(isVideoCall) document.getElementById("videoToggleBtn").style.display = "inline-block";
+                startCallTimer();
+                const answerDescription = new RTCSessionDescription(data.answer);
+                await peerConnection.setRemoteDescription(answerDescription);
             }
         });
 
