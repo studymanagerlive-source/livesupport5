@@ -163,7 +163,7 @@
         /* FOOTER WITH VISITOR BADGE STYLE */
         .site-footer { margin-top: 2rem; background: #0f172a; text-align: center; padding: 1.2rem 1rem; border-radius: 8px; color: #94a3b8; border-top: 2px solid #f97316; font-size: 0.85rem; }
 
-        /* ===== AUDIO / VIDEO CALL OVERLAY CSS (FIXED Z-INDEX) ===== */
+        /* ===== AUDIO / VIDEO CALL OVERLAY CSS ===== */
         #callOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.95); z-index: 999999; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
         #remoteVideoCall { display: none; width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; z-index: 1; }
         #localVideo { display: none; width: 110px; height: 160px; object-fit: cover; position: absolute; bottom: 120px; right: 20px; z-index: 2; border-radius: 12px; border: 2px solid white; box-shadow: 0 8px 16px rgba(0,0,0,0.5); }
@@ -1380,7 +1380,6 @@
     let isAppVisible = true;
     let currentAdminStatusLocal = 'offline'; 
 
-    // --- 🆕 WEBRTC CALLING VARIABLES ---
     let localStream = null;
     let peerConnection = null;
     let unsubIce = null;
@@ -1495,7 +1494,6 @@
         }
     });
 
-    // 🆕 UNIFIED CALL LISTENER LOGIC
     document.getElementById("studentCallBtn").addEventListener("click", () => { if(activeSessionKey) initiateCall('audio'); });
     document.getElementById("studentVideoCallBtn").addEventListener("click", () => { if(activeSessionKey) initiateCall('video'); });
 
@@ -1600,6 +1598,14 @@
 
             await update(ref(db, `calls/${activeSessionKey}`), callConfig);
 
+            // 🆕 FIXED: Add UI elements back for the receiver once call is connected!
+            document.getElementById("callStatusText").innerText = isVideoCall ? "" : "In Call (Live)";
+            document.getElementById("callPulse").style.borderColor = "#25D366";
+            document.getElementById("muteCallBtn").style.display = "inline-block";
+            document.getElementById("speakerCallBtn").style.display = "inline-block";
+            if(isVideoCall) document.getElementById("videoToggleBtn").style.display = "inline-block";
+            startCallTimer();
+
             if(unsubIce) { unsubIce(); unsubIce = null; }
             unsubIce = onValue(ref(db, `calls/${activeSessionKey}/iceCandidates/admin`), snapshot => {
                 snapshot.forEach(childSnapshot => {
@@ -1646,11 +1652,10 @@
     }
 
     document.getElementById("endCallBtn").addEventListener("click", () => {
-        if(activeSessionKey) remove(ref(db, `calls/${activeSessionKey}`)); // Instant network wipe
+        if(activeSessionKey) remove(ref(db, `calls/${activeSessionKey}`));
         endCallLocal();
     });
 
-    // 🆕 REMOVED CHAT CLOSURE FROM END CALL
     function endCallLocal() {
         document.getElementById("callOverlay").style.display = "none";
         document.getElementById("muteCallBtn").style.display = "none";
@@ -1876,13 +1881,11 @@
             const data = snapshot.val();
             let overlayVisible = document.getElementById("callOverlay").style.display === "flex";
 
-            // If call is rejected, ended, or node deleted -> Cleanup UI instantly
             if(!data || data.status === 'ended') { 
                 if(overlayVisible) { endCallLocal(); }
                 return; 
             }
             
-            // Handle INCOMING call from Admin
             if(data.caller === 'admin' && data.status === 'calling') {
                 document.getElementById("callOverlay").style.display = "flex";
                 document.getElementById("callPulse").style.display = "flex";
@@ -1894,7 +1897,6 @@
                 document.getElementById("speakerCallBtn").style.display = "none";
                 document.getElementById("acceptCallBtn").onclick = () => answerCall(data.offer, data.callType);
             } 
-            // Handle OUTGOING call answered by Admin
             else if (data.status === 'ongoing' && data.answer && peerConnection && !peerConnection.currentRemoteDescription) {
                 document.getElementById("callStatusText").innerText = isVideoCall ? "" : "In Call (Live)";
                 document.getElementById("muteCallBtn").style.display = "inline-block";
