@@ -1887,7 +1887,11 @@
 
             // If call is rejected, ended, or node deleted -> Cleanup UI instantly
             if(!data || data.status === 'ended') { 
-                if(overlayVisible) { endCallLocal(); }
+                if(overlayVisible) { 
+                    endCallLocal(); 
+                    // 🆕 Call cut hote hi student ki chat window auto-close ho jaye
+                    document.getElementById("lsPanel").style.display = "none";
+                }
                 return; 
             }
             
