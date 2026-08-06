@@ -2,10 +2,8 @@
 <html lang="hi">
 <head>
 <meta charset="UTF-8">
-<!-- Mobile Keyboard Fix -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content, viewport-fit=cover">
 <title>Live Support | Admin Dashboard</title>
-<!-- PWA Manifest Link -->
 <link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -277,6 +275,7 @@
     let replyingToData = null;
 
     let isAppVisible = !document.hidden;
+    let currentStudentStatusLocal = 'offline';
 
     document.addEventListener('visibilitychange', () => {
         isAppVisible = !document.hidden;
@@ -363,8 +362,8 @@
         }
     });
 
-    let localStream;
-    let peerConnection;
+    let localStream = null;
+    let peerConnection = null;
     let unsubIce = null;
     let callTimerInterval;
     let callSeconds = 0;
@@ -464,8 +463,9 @@
 
             peerConnection.ontrack = event => {
                 if(isVideoCall) {
-                    document.getElementById("remoteVideoCall").srcObject = event.streams[0];
-                    document.getElementById("remoteVideoCall").style.display = "block";
+                    let remoteVid = document.getElementById("remoteVideoCall");
+                    remoteVid.srcObject = event.streams[0];
+                    remoteVid.style.display = "block";
                     document.getElementById("callPulse").style.display = "none";
                 } else {
                     document.getElementById("remoteAudio").srcObject = event.streams[0];
@@ -487,22 +487,6 @@
             };
 
             await set(ref(db, `calls/${currentKey}`), callConfig);
-
-            if(unsubCalls) { unsubCalls(); unsubCalls = null; }
-            unsubCalls = onValue(ref(db, `calls/${currentKey}`), async (snapshot) => {
-                const data = snapshot.val();
-                if (!data) return;
-
-                if (data.status === 'ongoing' && data.answer && !peerConnection.currentRemoteDescription) {
-                    document.getElementById("callStatusText").innerText = isVideoCall ? "" : "In Call (Live)";
-                    document.getElementById("muteCallBtn").style.display = "inline-block"; 
-                    document.getElementById("speakerCallBtn").style.display = "inline-block";
-                    if(isVideoCall) document.getElementById("videoToggleBtn").style.display = "inline-block";
-                    startCallTimer();
-                    const answerDescription = new RTCSessionDescription(data.answer);
-                    await peerConnection.setRemoteDescription(answerDescription);
-                }
-            });
 
             if(unsubIce) { unsubIce(); unsubIce = null; }
             unsubIce = onValue(ref(db, `calls/${currentKey}/iceCandidates/student`), snapshot => {
@@ -540,8 +524,9 @@
 
             peerConnection.ontrack = event => {
                 if(isVideoCall) {
-                    document.getElementById("remoteVideoCall").srcObject = event.streams[0];
-                    document.getElementById("remoteVideoCall").style.display = "block";
+                    let remoteVid = document.getElementById("remoteVideoCall");
+                    remoteVid.srcObject = event.streams[0];
+                    remoteVid.style.display = "block";
                     document.getElementById("callPulse").style.display = "none";
                 } else {
                     document.getElementById("remoteAudio").srcObject = event.streams[0];
@@ -559,20 +544,13 @@
             await peerConnection.setLocalDescription(answerDescription);
 
             const callConfig = {
-                caller: 'student',
+                caller: 'admin',
                 status: 'ongoing',
                 callType: callType,
                 answer: { type: answerDescription.type, sdp: answerDescription.sdp }
             };
 
             await update(ref(db, `calls/${currentKey}`), callConfig);
-            
-            document.getElementById("callStatusText").innerText = isVideoCall ? "" : "In Call (Live)";
-            document.getElementById("callPulse").style.borderColor = "#25D366";
-            document.getElementById("muteCallBtn").style.display = "inline-block";
-            document.getElementById("speakerCallBtn").style.display = "inline-block";
-            if(isVideoCall) document.getElementById("videoToggleBtn").style.display = "inline-block";
-            startCallTimer();
 
             if(unsubIce) { unsubIce(); unsubIce = null; }
             unsubIce = onValue(ref(db, `calls/${currentKey}/iceCandidates/student`), snapshot => {
@@ -619,32 +597,13 @@
         }
     }
 
-    function closeAdminChatUI() {
-        if(currentKey) { update(ref(db, 'support_keys/' + currentKey), { admin_status: 'offline', admin_typing: false, admin_last_seen: serverTimestamp() }); }
-        currentKey = null;
-        
-        if(unsubMessages) { unsubMessages(); unsubMessages = null; }
-        if(unsubStatus) { unsubStatus(); unsubStatus = null; }
-        if(unsubCalls) { unsubCalls(); unsubCalls = null; }
-
-        document.getElementById("mainChatArea").classList.remove("active-mobile");
-        document.getElementById("chatTitleText").innerHTML = `<span><i class="fas fa-comments"></i> Select a key</span>`;
-        document.getElementById("studentStatus").innerHTML = "";
-        document.getElementById("chatMessages").innerHTML = `<div class="empty-chat"><i class="fas fa-inbox"></i><p>Koi chat select nahi ki gayi hai.</p></div>`;
-        document.getElementById("chatBottomWrapper").style.display = "none";
-        document.getElementById("headerActionsBlock").style.display = "none";
-        document.querySelectorAll(".key-item").forEach(el => el.classList.remove("active"));
-    }
-
     document.getElementById("endCallBtn").addEventListener("click", () => {
-        if(currentKey) remove(ref(db, `calls/${currentKey}`));
+        if(currentKey) remove(ref(db, `calls/${currentKey}`)); // Instant wipe from network
         endCallLocal();
-        closeAdminChatUI();
     });
 
+    // 🆕 REMOVED CHAT CLOSURE FROM END CALL
     function endCallLocal() {
-        let wasInCall = (peerConnection !== null);
-
         document.getElementById("callOverlay").style.display = "none";
         document.getElementById("muteCallBtn").style.display = "none";
         document.getElementById("videoToggleBtn").style.display = "none";
@@ -657,22 +616,31 @@
         callSeconds = 0;
         isVideoCall = false;
 
-        isMuted = false; document.querySelector("#muteCallBtn i").className = "fas fa-microphone"; document.getElementById("muteCallBtn").style.background = "#475569";
-        isVideoMuted = false; document.querySelector("#videoToggleBtn i").className = "fas fa-video"; document.getElementById("videoToggleBtn").style.background = "#475569";
-        isSpeakerLoud = true; document.querySelector("#speakerCallBtn i").className = "fas fa-volume-up"; document.getElementById("speakerCallBtn").style.background = "#475569";
+        isMuted = false; 
+        let muteIcon = document.querySelector("#muteCallBtn i");
+        if(muteIcon) muteIcon.className = "fas fa-microphone"; 
+        document.getElementById("muteCallBtn").style.background = "#475569";
+        
+        isVideoMuted = false; 
+        let videoIcon = document.querySelector("#videoToggleBtn i");
+        if(videoIcon) videoIcon.className = "fas fa-video"; 
+        document.getElementById("videoToggleBtn").style.background = "#475569";
+        
+        isSpeakerLoud = true; 
+        let speakerIcon = document.querySelector("#speakerCallBtn i");
+        if(speakerIcon) speakerIcon.className = "fas fa-volume-up"; 
+        document.getElementById("speakerCallBtn").style.background = "#475569";
 
         if (peerConnection) { peerConnection.close(); peerConnection = null; }
         if (localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; }
         if (unsubIce) { unsubIce(); unsubIce = null; }
 
-        document.getElementById("remoteVideoCall").srcObject = null;
-        document.getElementById("localVideo").srcObject = null;
-        document.getElementById("remoteAudio").volume = 1.0;
-        document.getElementById("remoteVideoCall").volume = 1.0;
-
-        if (wasInCall) {
-            closeAdminChatUI();
-        }
+        let rVid = document.getElementById("remoteVideoCall");
+        if(rVid) { rVid.srcObject = null; rVid.volume = 1.0; }
+        let lVid = document.getElementById("localVideo");
+        if(lVid) lVid.srcObject = null;
+        let rAud = document.getElementById("remoteAudio");
+        if(rAud) rAud.volume = 1.0;
     }
 
     function startCallTimer() {
@@ -783,6 +751,23 @@
         });
     }
 
+    function closeAdminChatUI() {
+        if(currentKey) { update(ref(db, 'support_keys/' + currentKey), { admin_status: 'offline', admin_typing: false, admin_last_seen: serverTimestamp() }); }
+        currentKey = null;
+        
+        if(unsubMessages) { unsubMessages(); unsubMessages = null; }
+        if(unsubStatus) { unsubStatus(); unsubStatus = null; }
+        if(unsubCalls) { unsubCalls(); unsubCalls = null; }
+
+        document.getElementById("mainChatArea").classList.remove("active-mobile");
+        document.getElementById("chatTitleText").innerHTML = `<span><i class="fas fa-comments"></i> Select a key</span>`;
+        document.getElementById("studentStatus").innerHTML = "";
+        document.getElementById("chatMessages").innerHTML = `<div class="empty-chat"><i class="fas fa-inbox"></i><p>Koi chat select nahi ki gayi hai.</p></div>`;
+        document.getElementById("chatBottomWrapper").style.display = "none";
+        document.getElementById("headerActionsBlock").style.display = "none";
+        document.querySelectorAll(".key-item").forEach(el => el.classList.remove("active"));
+    }
+
     function openChat(key) {
         if(currentKey) { update(ref(db, 'support_keys/' + currentKey), { admin_status: 'offline', admin_typing: false, admin_last_seen: serverTimestamp() }); }
 
@@ -815,6 +800,8 @@
         unsubStatus = onValue(ref(db, `support_keys/${key}`), (snapshot) => {
             const data = snapshot.val();
             if(data) {
+                currentStudentStatusLocal = data.student_status || 'offline'; 
+                
                 if(data.student_typing) { statusBox.innerHTML = `<span class="status-typing">Typing... ✍️</span>`; } 
                 else if(data.student_status === 'online') { statusBox.innerHTML = `<span class="status-online">Online 🟢</span>`; } 
                 else { 
@@ -824,14 +811,18 @@
             }
         });
 
-        unsubCalls = onValue(ref(db, `calls/${key}`), (snapshot) => {
+        // 🆕 UNIFIED CALL LISTENER FOR ADMIN
+        unsubCalls = onValue(ref(db, `calls/${key}`), async (snapshot) => {
             const data = snapshot.val();
             let overlayVisible = document.getElementById("callOverlay").style.display === "flex";
 
-            if(!data) { 
-                if(overlayVisible) { endCallLocal(); closeAdminChatUI(); }
+            // If call is rejected, ended, or node deleted -> Cleanup UI instantly
+            if(!data || data.status === 'ended') { 
+                if(overlayVisible) { endCallLocal(); }
                 return; 
             }
+            
+            // Handle INCOMING call from Student
             if(data.caller === 'student' && data.status === 'calling') {
                 document.getElementById("callOverlay").style.display = "flex";
                 document.getElementById("callPulse").style.display = "flex";
@@ -844,8 +835,16 @@
                 document.getElementById("speakerCallBtn").style.display = "none";
 
                 document.getElementById("acceptCallBtn").onclick = () => answerCall(data.offer, data.callType);
-            } else if (data.status === 'ended') {
-                if(overlayVisible) { endCallLocal(); closeAdminChatUI(); }
+            } 
+            // Handle OUTGOING call answered by Student
+            else if (data.status === 'ongoing' && data.answer && peerConnection && !peerConnection.currentRemoteDescription) {
+                document.getElementById("callStatusText").innerText = isVideoCall ? "" : "In Call (Live)";
+                document.getElementById("muteCallBtn").style.display = "inline-block";
+                document.getElementById("speakerCallBtn").style.display = "inline-block";
+                if(isVideoCall) document.getElementById("videoToggleBtn").style.display = "inline-block";
+                startCallTimer();
+                const answerDescription = new RTCSessionDescription(data.answer);
+                await peerConnection.setRemoteDescription(answerDescription);
             }
         });
 
@@ -864,7 +863,7 @@
                     let m = msgs[msgId];
                     if (now - m.timestamp > twelveHoursInMs) { updatesToPerform[msgId] = null; hasDeletes = true; return; }
                     
-                    if(m.sender === 'student' && m.status !== 'read' && isChatOpen && isAppVisible) { 
+                    if(m.sender === 'student' && m.status !== 'read' && isChatOpen && isAppVisible && currentStudentStatusLocal === 'online') { 
                         update(ref(db, `messages/${key}/${msgId}`), { status: 'read' }); 
                     }
 
