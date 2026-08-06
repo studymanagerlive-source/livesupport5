@@ -2,8 +2,10 @@
 <html lang="hi">
 <head>
 <meta charset="UTF-8">
+<!-- Mobile Keyboard Fix -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content, viewport-fit=cover">
 <title>Live Support | Admin Dashboard</title>
+<!-- PWA Manifest Link -->
 <link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -275,7 +277,6 @@
     let replyingToData = null;
 
     let isAppVisible = !document.hidden;
-    let currentStudentStatusLocal = 'offline';
 
     document.addEventListener('visibilitychange', () => {
         isAppVisible = !document.hidden;
@@ -544,13 +545,21 @@
             await peerConnection.setLocalDescription(answerDescription);
 
             const callConfig = {
-                caller: 'admin',
+                caller: 'student',
                 status: 'ongoing',
                 callType: callType,
                 answer: { type: answerDescription.type, sdp: answerDescription.sdp }
             };
 
             await update(ref(db, `calls/${currentKey}`), callConfig);
+
+            // 🆕 FIXED: Add UI elements back for the receiver once call is connected!
+            document.getElementById("callStatusText").innerText = isVideoCall ? "" : "In Call (Live)";
+            document.getElementById("callPulse").style.borderColor = "#25D366";
+            document.getElementById("muteCallBtn").style.display = "inline-block";
+            document.getElementById("speakerCallBtn").style.display = "inline-block";
+            if(isVideoCall) document.getElementById("videoToggleBtn").style.display = "inline-block";
+            startCallTimer();
 
             if(unsubIce) { unsubIce(); unsubIce = null; }
             unsubIce = onValue(ref(db, `calls/${currentKey}/iceCandidates/student`), snapshot => {
@@ -598,11 +607,10 @@
     }
 
     document.getElementById("endCallBtn").addEventListener("click", () => {
-        if(currentKey) remove(ref(db, `calls/${currentKey}`)); // Instant wipe from network
+        if(currentKey) remove(ref(db, `calls/${currentKey}`));
         endCallLocal();
     });
 
-    // 🆕 REMOVED CHAT CLOSURE FROM END CALL
     function endCallLocal() {
         document.getElementById("callOverlay").style.display = "none";
         document.getElementById("muteCallBtn").style.display = "none";
@@ -816,13 +824,11 @@
             const data = snapshot.val();
             let overlayVisible = document.getElementById("callOverlay").style.display === "flex";
 
-            // If call is rejected, ended, or node deleted -> Cleanup UI instantly
             if(!data || data.status === 'ended') { 
                 if(overlayVisible) { endCallLocal(); }
                 return; 
             }
             
-            // Handle INCOMING call from Student
             if(data.caller === 'student' && data.status === 'calling') {
                 document.getElementById("callOverlay").style.display = "flex";
                 document.getElementById("callPulse").style.display = "flex";
@@ -836,7 +842,6 @@
 
                 document.getElementById("acceptCallBtn").onclick = () => answerCall(data.offer, data.callType);
             } 
-            // Handle OUTGOING call answered by Student
             else if (data.status === 'ongoing' && data.answer && peerConnection && !peerConnection.currentRemoteDescription) {
                 document.getElementById("callStatusText").innerText = isVideoCall ? "" : "In Call (Live)";
                 document.getElementById("muteCallBtn").style.display = "inline-block";
