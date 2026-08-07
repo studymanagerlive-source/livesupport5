@@ -243,7 +243,7 @@
     }
 
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-    import { getDatabase, ref, set, push, onValue, serverTimestamp, update, onDisconnect, off, remove, get } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+    import { getDatabase, ref, set, push, onValue, serverTimestamp, update, onDisconnect, off, remove, get, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
     import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-messaging.js"; 
     import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
@@ -465,6 +465,16 @@
 
     async function initiateCall(callType) {
         try {
+            // 🆕 Call shuru karne se pehle hi check kar lo ki koi call pehle se active toh nahi hai
+            // (jaise student ne bhi usi second call kar di ho) — isse camera/mic ka permission
+            // popup bhi bewajah nahi aayega.
+            const existingSnap = await get(ref(db, `calls/${currentKey}`));
+            const existingData = existingSnap.val();
+            if (existingData && existingData.status && existingData.status !== 'ended') {
+                alert("Ek call pehle se chal rahi hai. Thodi der baad try karein.");
+                return;
+            }
+
             isVideoCall = (callType === 'video');
             localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: isVideoCall });
             
@@ -498,7 +508,19 @@
                 offer: { type: offerDescription.type, sdp: offerDescription.sdp }
             };
 
-            await set(ref(db, `calls/${currentKey}`), callConfig);
+            // 🆕 set() ki jagah runTransaction() — ye Firebase server pe atomically check karta hai
+            // ki write ke exact moment pe bhi koi active call na aa gayi ho (student ne isi second
+            // call ki ho). Aisa hua toh apni call cancel kar do, dono taraf confusion nahi hoga.
+            const txResult = await runTransaction(ref(db, `calls/${currentKey}`), (current) => {
+                if (current && current.status && current.status !== 'ended') { return; } // abort, mat overwrite karo
+                return callConfig;
+            });
+
+            if (!txResult.committed) {
+                alert("Ek call pehle se chal rahi hai. Thodi der baad try karein.");
+                endCallLocal();
+                return;
+            }
 
             if(unsubIce) { unsubIce(); unsubIce = null; }
             unsubIce = onValue(ref(db, `calls/${currentKey}/iceCandidates/student`), snapshot => {
@@ -556,7 +578,6 @@
             await peerConnection.setLocalDescription(answerDescription);
 
             const callConfig = {
-                caller: 'admin',
                 status: 'ongoing',
                 callType: callType,
                 answer: { type: answerDescription.type, sdp: answerDescription.sdp }
@@ -679,9 +700,19 @@
     const emojis = ["😀","😃","😄","😁","😆","😅","😂","🤣","😊","😇","🙂","🙃","😉","😌","😍","🥰","😘","😋","😛","😝","😜","🤪","🤓","😎","🤩","🥳","😏","😒","😞","😔","😟","😕","🙁","☹️","😣","😖","😫","😩","🥺","😢","😭","😤","😠","😡","🤯","😳","😱","😨","😰","😥","😓","🤗","🤔","🤭","🤫","😶","😐","😑","😬","🙄","😯","😦","😧","😮","😲","🥱","😴","🤤","😪","😵","🤐","🥴","🤢","🤮","🤧","😷","🤒","🤕","🤑","🤠","😈","👿","👻","💀","👽","👾","🤖","🎃","👍","👎","👏","🙌","👐","🤲","🤝","🙏","✌️","🤞","👆","👇","👈","👉","🔥","💯","❤️","💔"];
     const emojiPicker = document.getElementById("adminEmojiPicker");
     const msgInput = document.getElementById("adminMsgInput");
+    // 🆕 Emoji picker par tap/click karte hi input se focus na hate (jisse mobile keyboard
+    // band-khul-band "hilta" tha) — mousedown pe hi default browser-behavior rok dete hain.
+    emojiPicker.addEventListener("mousedown", (e) => { e.preventDefault(); });
     emojis.forEach(e => {
         let span = document.createElement("span"); span.innerText = e;
-        span.onclick = () => { msgInput.value += e; msgInput.focus(); };
+        span.onclick = () => { 
+            const start = msgInput.selectionStart ?? msgInput.value.length;
+            const end = msgInput.selectionEnd ?? msgInput.value.length;
+            msgInput.value = msgInput.value.slice(0, start) + e + msgInput.value.slice(end);
+            const newPos = start + e.length;
+            msgInput.setSelectionRange(newPos, newPos);
+            msgInput.focus();
+        };
         emojiPicker.appendChild(span);
     });
     document.getElementById("adminEmojiBtn").addEventListener("click", () => emojiPicker.classList.toggle("active"));
