@@ -810,7 +810,7 @@
     }
 
     function genId() { return Date.now() + '-' + Math.random().toString(36).substr(2, 6); }
-    function escapeHtml(str) { if(!str) return ''; return str.replace(/[&<>]/g, m => m=='&'?'&amp;':m=='<'?'&lt;':'&gt;'); }
+    function escapeHtml(str) { if(!str) return ''; return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
     function getAllSections() {
         let sections = [];
@@ -1376,6 +1376,10 @@
     let unsubStatus = null;
     let unsubCalls = null;
     let replyingToData = null;
+    // 🆕 Har render pe latest messages yahan cache karte hain, taaki reply/delete
+    // button ke liye raw message text ko HTML/JS attribute mein kabhi daalna hi na pade
+    // (isi wajah se pehle quote-breaking XSS bug tha).
+    let lastMsgsCache = {};
 
     let isAppVisible = true;
     let currentAdminStatusLocal = 'offline'; 
@@ -1427,13 +1431,16 @@
         return `${date.getDate()}/${date.getMonth()+1}/${date.getFullYear().toString().slice(-2)} at ${timeStr}`;
     }
     
-    function escapeHtml(str) { return str.replace(/[&<>]/g, m => m=='&'?'&amp;':m=='<'?'&lt;':'&gt;'); }
+    function escapeHtml(str) { if(!str) return ''; return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
-    window.setReply = function(msgId, textSnippet, sender) {
-        replyingToData = { id: msgId, text: textSnippet, sender: sender };
+    window.setReply = function(msgId) {
+        const m = lastMsgsCache[msgId];
+        if(!m) return;
+        const rawText = m.text || (m.fileUrl ? "📷 Media File" : "");
+        replyingToData = { id: msgId, text: rawText, sender: m.sender };
         document.getElementById("replyPreviewBox").style.display = "block";
-        document.getElementById("replyPreviewName").innerText = sender === 'student' ? 'Replying to Yourself' : 'Replying to Admin';
-        document.getElementById("replyPreviewText").innerText = textSnippet.substring(0, 60) + (textSnippet.length > 60 ? "..." : "");
+        document.getElementById("replyPreviewName").innerText = m.sender === 'student' ? 'Replying to Yourself' : 'Replying to Admin';
+        document.getElementById("replyPreviewText").innerText = rawText.substring(0, 60) + (rawText.length > 60 ? "..." : "");
         document.getElementById("studentMsgInput").focus();
     };
 
@@ -1927,6 +1934,7 @@
         unsubMessages = onValue(ref(db, `messages/${key}`), (snapshot) => {
             const msgs = snapshot.val();
             let newHtmlString = ""; 
+            lastMsgsCache = msgs || {};
             if(msgs) {
                 const now = Date.now();
                 const twelveHoursInMs = 12 * 60 * 60 * 1000;
@@ -1955,16 +1963,18 @@
                     }
 
                     let textContent = escapeHtml(m.text || "");
-                    let textSnippetForReply = textContent || "📷 Media File";
 
                     if (m.fileUrl) {
-                        if (m.fileType && m.fileType.startsWith('image/')) { contentHtml += `<div style="margin-top:2px;"><a href="${m.fileUrl}" target="_blank"><img src="${m.fileUrl}" class="chat-media-img"></a></div>`; } 
-                        else if (m.fileType && m.fileType.startsWith('video/')) { contentHtml += `<div style="margin-top:2px;"><video src="${m.fileUrl}" controls class="chat-media-video"></video></div>`; } 
-                        else if (m.fileType && m.fileType.startsWith('audio/')) { contentHtml += `<div style="margin-top:2px;"><audio src="${m.fileUrl}" controls class="chat-media-audio"></audio></div>`; } 
-                        else { contentHtml += `<div style="margin-top:2px;"><a href="${m.fileUrl}" target="_blank" style="color:#34b7f1; text-decoration:underline; font-weight:bold;"><i class="fas fa-file"></i> Open File</a></div>`; }
+                        let safeUrl = escapeHtml(m.fileUrl);
+                        if (m.fileType && m.fileType.startsWith('image/')) { contentHtml += `<div style="margin-top:2px;"><a href="${safeUrl}" target="_blank"><img src="${safeUrl}" class="chat-media-img"></a></div>`; } 
+                        else if (m.fileType && m.fileType.startsWith('video/')) { contentHtml += `<div style="margin-top:2px;"><video src="${safeUrl}" controls class="chat-media-video"></video></div>`; } 
+                        else if (m.fileType && m.fileType.startsWith('audio/')) { contentHtml += `<div style="margin-top:2px;"><audio src="${safeUrl}" controls class="chat-media-audio"></audio></div>`; } 
+                        else { contentHtml += `<div style="margin-top:2px;"><a href="${safeUrl}" target="_blank" style="color:#34b7f1; text-decoration:underline; font-weight:bold;"><i class="fas fa-file"></i> Open File</a></div>`; }
                     }
                     contentHtml += textContent;
-                    let actionsHtml = `<div class="msg-controls"><i class="fas fa-reply msg-btn reply" onclick="window.setReply('${msgId}', '${textSnippetForReply.replace(/'/g, "\\'")}', '${m.sender}')"></i><i class="fas fa-trash msg-btn delete" onclick="window.deleteMessage('${msgId}')"></i></div>`;
+                    // 🆕 Ab onclick mein sirf msgId jaata hai (Firebase key hamesha safe chars ki hoti hai) —
+                    // raw message text kabhi bhi HTML/JS attribute mein interpolate nahi hota.
+                    let actionsHtml = `<div class="msg-controls"><i class="fas fa-reply msg-btn reply" onclick="window.setReply('${msgId}')"></i><i class="fas fa-trash msg-btn delete" onclick="window.deleteMessage('${msgId}')"></i></div>`;
                     newHtmlString += `<div class="chat-bubble ${isStudent ? 'student' : 'admin'}">${contentHtml}<span class="bubble-time">${actionsHtml} ${time} ${tickHtml}</span></div>`;
                 });
                 
