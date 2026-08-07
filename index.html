@@ -4,6 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
     <title>Study Notes Manager | लाइव ऐप</title>
+    <script>
+        // 🆕 Ye page (index.html) ka apna koi service worker/PWA nahi hai.
+        // Agar purane deploy ka Admin wala service worker galti se is page ko
+        // control kar raha hai (jisse Admin ka splash/logo yahan flash hota hai),
+        // to use turant hata do - taaki agli baar se ye page bilkul saaf khulे.
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then((registrations) => {
+                registrations.forEach((registration) => { registration.unregister(); });
+            }).catch(() => {});
+        }
+    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
