@@ -236,22 +236,28 @@
 </div>
 
 <script type="module">
+    // 🆕 Ye registration object baad me getToken() ko explicitly diya jayega,
+    // taaki Firebase Messaging humare custom-scoped (admin.html) worker ko hi
+    // use kare - warna wo apni marzi se ek default (root-scope) worker khud
+    // register kar leta hai aur token generate hona fail ho jaata hai.
+    window.__swRegistration = null;
+
     if ('serviceWorker' in navigator) {
-        // 🆕 Pehले purana koi bhi service worker jo admin.html se alag scope pe hai
+        // Pehले purana koi bhi service worker jo admin.html se alag scope pe hai
         // (jaise purana '/' wala broad-scope worker), use hata do - taaki wo student
         // wale index.html page ko control na kare.
         navigator.serviceWorker.getRegistrations().then((registrations) => {
             registrations.forEach((reg) => {
                 if (!reg.scope.endsWith('/admin.html')) { reg.unregister(); }
             });
-        }).catch(() => {});
-
-        // Scope ko sirf admin.html tak restrict kiya hai, taaki ye service worker
-        // poori site (index.html samet) control na kare - warna Android/Chrome
-        // student wale page kholte waqt bhi Admin PWA ka splash/logo dikha deta hai.
-        navigator.serviceWorker.register('./firebase-messaging-sw.js', { scope: './admin.html' })
-        .then((registration) => { console.log('Service Worker Registered (scope: admin.html only)'); })
-        .catch((err) => { console.log('Service Worker Registration Failed', err); });
+        }).then(() => {
+            // Scope ko sirf admin.html tak restrict kiya hai, taaki ye service worker
+            // poori site (index.html samet) control na kare.
+            return navigator.serviceWorker.register('./firebase-messaging-sw.js', { scope: './admin.html' });
+        }).then((registration) => {
+            window.__swRegistration = registration;
+            console.log('Service Worker Registered (scope: admin.html only)');
+        }).catch((err) => { console.log('Service Worker Registration Failed', err); });
     }
 
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
@@ -350,7 +356,18 @@
         try {
             const permission = await Notification.requestPermission();
             if (permission === 'granted') {
-                const token = await getToken(messaging, { vapidKey: 'BLPE1H3ykDX9nLIOIUQoDDxkEfGlJC4JUZseJbh2E2H6ewQ0749sEs0TXkYyupmJYrEMwCq7nv1gLk5hMjo1ClM' });
+                // 🆕 Agar service worker registration abhi tak ready nahi hui (race condition),
+                // thoda intezaar karo - warna getToken() ko sahi worker nahi milegi.
+                let waitCount = 0;
+                while (!window.__swRegistration && waitCount < 20) {
+                    await new Promise(r => setTimeout(r, 200));
+                    waitCount++;
+                }
+
+                const token = await getToken(messaging, {
+                    vapidKey: 'BLPE1H3ykDX9nLIOIUQoDDxkEfGlJC4JUZseJbh2E2H6ewQ0749sEs0TXkYyupmJYrEMwCq7nv1gLk5hMjo1ClM',
+                    serviceWorkerRegistration: window.__swRegistration || undefined
+                });
                 if (!token) return;
 
                 const existingSnap = await get(ref(db, 'admin_settings/fcm_tokens'));
