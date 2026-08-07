@@ -2,6 +2,7 @@
   "name": "Live Support Admin",
   "short_name": "Admin Support",
   "start_url": "./admin.html",
+  "scope": "./admin.html",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#1e293b",
