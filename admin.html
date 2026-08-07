@@ -245,6 +245,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
     import { getDatabase, ref, set, push, onValue, serverTimestamp, update, onDisconnect, off, remove, get } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
     import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-messaging.js"; 
+    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyBUPIULkKxZx0d7sX6kag2Fa-nmkgjnDA8",
@@ -263,11 +264,16 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
     const messaging = getMessaging(app); 
-    
+    const auth = getAuth(app);
+
+    // 🆕 Ye admin ka Firebase Auth email hai — isay secret maanne ki zaroorat nahi,
+    // asli security wala kaam password (Firebase server pe verify hota hai) karta hai.
+    // Firebase Console > Authentication > Users mein isi email se ek user banana.
+    const ADMIN_EMAIL = "admin@livesupports-65142.local";
+
     let currentKey = null;
     let typingTimer;
     let isSending = false;
-    const ADMIN_PASSWORD = "Ankush@2026";
 
     let unsubMessages = null;
     let unsubStatus = null;
@@ -714,14 +720,34 @@
 
     document.getElementById("adminLoginBtn").addEventListener("click", tryLogin);
     document.getElementById("adminPassInput").addEventListener("keydown", (e) => { if (e.key === "Enter") tryLogin(); });
-    document.getElementById("logoutBtn").addEventListener("click", () => { location.reload(); });
+    document.getElementById("logoutBtn").addEventListener("click", () => { signOut(auth).finally(() => location.reload()); });
 
     function tryLogin() {
-        if (document.getElementById("adminPassInput").value === ADMIN_PASSWORD) {
+        const pass = document.getElementById("adminPassInput").value;
+        if (!pass) return;
+        document.getElementById("loginErrorMsg").style.display = "none";
+        const btn = document.getElementById("adminLoginBtn");
+        btn.disabled = true; btn.innerText = "Checking...";
+
+        // 🆕 Password ab Firebase ke server pe verify hota hai, client-side string
+        // compare nahi — koi bhi page source dekh ke login nahi kar sakta.
+        signInWithEmailAndPassword(auth, ADMIN_EMAIL, pass)
+            .catch(() => {
+                document.getElementById("loginErrorMsg").style.display = "block";
+            })
+            .finally(() => {
+                btn.disabled = false; btn.innerText = "Login";
+            });
+    }
+
+    // 🆕 Firebase khud batata hai ki login valid hai ya nahi — isi se dashboard khulta/band hota hai.
+    // Ye page refresh hone par bhi session ko sahi tarike se restore/check karta hai.
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
             document.getElementById("loginScreen").style.display = "none";
             document.getElementById("dashboard").style.display = "flex";
             loadKeys();
-            requestNotificationPermission(); 
+            requestNotificationPermission();
 
             const urlParams = new URLSearchParams(window.location.search);
             const deepLinkKey = urlParams.get('key');
@@ -729,9 +755,10 @@
                 setTimeout(() => openChat(deepLinkKey), 400);
             }
         } else {
-            document.getElementById("loginErrorMsg").style.display = "block";
+            document.getElementById("loginScreen").style.display = "flex";
+            document.getElementById("dashboard").style.display = "none";
         }
-    }
+    });
 
     document.getElementById("generateKeyBtn").addEventListener("click", () => {
         let newKey = Math.floor(100000 + Math.random() * 900000).toString();
