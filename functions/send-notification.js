@@ -1,132 +1,121 @@
-// Cloudflare Pages Function for Firebase Cloud Messaging (FCM) v1
-// File location must be: /functions/send-notification.js (repo root ke andar "functions" folder)
-// Route automatically ban jaata hai: https://your-site.pages.dev/send-notification
+// Cloudflare Worker for Firebase Cloud Messaging (FCM) v1
+// NOTE: Ye "Worker" format hai (Pages Functions nahi) - poora export default { fetch() } hona zaroori hai
 
-export async function onRequestPost(context) {
-    const { request, env } = context;
-
-    const corsHeaders = {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-    };
-
-    try {
-        const payload = await request.json();
-        const { key, message, type } = payload;
-
-        if (!key) {
-            console.log("❌ Missing key in request");
-            return new Response(JSON.stringify({ error: "Missing key" }), { status: 400, headers: corsHeaders });
-        }
-
-        // 🆕 Sabse pehले check karo credentials hain ya nahi - agar nahi hain to
-        // yahi asli wajah hai notification na aane ki
-        if (!env.FIREBASE_SERVICE_ACCOUNT) {
-            console.log("❌ FIREBASE_SERVICE_ACCOUNT environment variable missing in Cloudflare Pages settings!");
-            return new Response(JSON.stringify({ error: "Missing Firebase Credentials in Cloudflare env vars" }), { status: 500, headers: corsHeaders });
-        }
-
-        let serviceAccount;
-        try {
-            serviceAccount = JSON.parse(env.FIREBASE_SERVICE_ACCOUNT);
-        } catch (e) {
-            console.log("❌ FIREBASE_SERVICE_ACCOUNT JSON parse failed:", e.message);
-            return new Response(JSON.stringify({ error: "Invalid FIREBASE_SERVICE_ACCOUNT JSON" }), { status: 500, headers: corsHeaders });
-        }
-
-        const projectId = serviceAccount.project_id;
-        const accessToken = await getGoogleAuthToken(serviceAccount);
-
-        if (!accessToken) {
-            console.log("❌ Failed to get Google OAuth access token - check private_key/client_email in service account");
-            return new Response(JSON.stringify({ error: "Auth token generation failed" }), { status: 500, headers: corsHeaders });
-        }
-
-        const dbUrl = `https://${projectId}-default-rtdb.firebaseio.com/admin_settings/fcm_tokens.json?access_token=${accessToken}`;
-        const dbResponse = await fetch(dbUrl);
-        const tokensObj = await dbResponse.json();
-
-        if (!tokensObj) {
-            console.log("⚠️ No FCM tokens registered yet (admin never granted notification permission)");
-            return new Response(JSON.stringify({ success: true, sent: 0, note: "No tokens found" }), { headers: corsHeaders });
-        }
-
-        const tokenEntries = Object.entries(tokensObj); // [pushId, token]
-
-        // 🆕 Duplicate tokens sirf ek baar bhejenge
-        const seen = new Set();
-        const uniqueEntries = tokenEntries.filter(([, token]) => {
-            if (seen.has(token)) return false;
-            seen.add(token);
-            return true;
-        });
-
-        // 🆕 Privacy: message ka actual content kabhi notification me nahi dikhाया jayega
-        const title = type === 'new_session' ? `🟢 ${key}` : `💬 ${key}`;
-        const body = type === 'new_session' ? 'is live now' : 'New Update';
-
-        let successCount = 0;
-        const invalidPushIds = [];
-
-        for (const [pushId, token] of uniqueEntries) {
-            const fcmUrl = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
-            // 🆕 Sirf "data" bhej rahe hain (notification field nahi) - isse hamara
-            // service worker khud notification banata hai (vibrate/icon guaranteed lagenge)
-            const fcmPayload = {
-                message: {
-                    token: token,
-                    data: {
-                        title,
-                        body,
-                        key: String(key),
-                        click_action: `/admin.html?key=${key}`
-                    },
-                    webpush: {
-                        fcm_options: { link: `https://${request.headers.get("host")}/admin.html?key=${key}` }
-                    }
-                }
-            };
-            const fcmResponse = await fetch(fcmUrl, {
-                method: "POST",
-                headers: { "Authorization": `Bearer ${accessToken}`, "Content-Type": "application/json" },
-                body: JSON.stringify(fcmPayload)
-            });
-
-            if (fcmResponse.ok) {
-                successCount++;
-            } else {
-                const errBody = await fcmResponse.text();
-                console.log(`⚠️ FCM send failed for token ${pushId}:`, errBody);
-                if (fcmResponse.status === 404 || fcmResponse.status === 400) {
-                    invalidPushIds.push(pushId);
-                }
-            }
-        }
-
-        // Expired/invalid tokens ko Firebase se saaf kar do
-        for (const pushId of invalidPushIds) {
-            await fetch(`https://${projectId}-default-rtdb.firebaseio.com/admin_settings/fcm_tokens/${pushId}.json?access_token=${accessToken}`, { method: "DELETE" });
-        }
-
-        console.log(`✅ Notification sent: ${successCount}/${uniqueEntries.length}`);
-        return new Response(JSON.stringify({ success: true, sent: successCount, total: uniqueEntries.length }), { headers: corsHeaders });
-
-    } catch (error) {
-        console.log("❌ send-notification error:", error.message);
-        return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: corsHeaders });
-    }
-}
-
-export async function onRequestOptions(context) {
-    return new Response(null, {
-        headers: {
+export default {
+    async fetch(request, env, ctx) {
+        const corsHeaders = {
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "POST, OPTIONS",
             "Access-Control-Allow-Headers": "Content-Type",
+        };
+
+        if (request.method === "OPTIONS") {
+            return new Response(null, { headers: corsHeaders });
         }
-    });
-}
+
+        if (request.method !== "POST") {
+            return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers: corsHeaders });
+        }
+
+        try {
+            const payload = await request.json();
+            const { key, message, type } = payload;
+
+            if (!key) {
+                console.log("❌ Missing key in request");
+                return new Response(JSON.stringify({ error: "Missing key" }), { status: 400, headers: corsHeaders });
+            }
+
+            if (!env.FIREBASE_SERVICE_ACCOUNT) {
+                console.log("❌ FIREBASE_SERVICE_ACCOUNT environment variable missing in Cloudflare Worker settings!");
+                return new Response(JSON.stringify({ error: "Missing Firebase Credentials in Worker env vars" }), { status: 500, headers: corsHeaders });
+            }
+
+            let serviceAccount;
+            try {
+                serviceAccount = JSON.parse(env.FIREBASE_SERVICE_ACCOUNT);
+            } catch (e) {
+                console.log("❌ FIREBASE_SERVICE_ACCOUNT JSON parse failed:", e.message);
+                return new Response(JSON.stringify({ error: "Invalid FIREBASE_SERVICE_ACCOUNT JSON" }), { status: 500, headers: corsHeaders });
+            }
+
+            const projectId = serviceAccount.project_id;
+            const accessToken = await getGoogleAuthToken(serviceAccount);
+
+            if (!accessToken) {
+                console.log("❌ Failed to get Google OAuth access token - check private_key/client_email in service account");
+                return new Response(JSON.stringify({ error: "Auth token generation failed" }), { status: 500, headers: corsHeaders });
+            }
+
+            const dbUrl = `https://${projectId}-default-rtdb.firebaseio.com/admin_settings/fcm_tokens.json?access_token=${accessToken}`;
+            const dbResponse = await fetch(dbUrl);
+            const tokensObj = await dbResponse.json();
+
+            if (!tokensObj) {
+                console.log("⚠️ No FCM tokens registered yet (admin never granted notification permission)");
+                return new Response(JSON.stringify({ success: true, sent: 0, note: "No tokens found" }), { headers: corsHeaders });
+            }
+
+            const tokenEntries = Object.entries(tokensObj);
+            const seen = new Set();
+            const uniqueEntries = tokenEntries.filter(([, token]) => {
+                if (seen.has(token)) return false;
+                seen.add(token);
+                return true;
+            });
+
+            const title = type === 'new_session' ? `🟢 ${key}` : `💬 ${key}`;
+            const body = type === 'new_session' ? 'is live now' : 'New Update';
+
+            let successCount = 0;
+            const invalidPushIds = [];
+
+            for (const [pushId, token] of uniqueEntries) {
+                const fcmUrl = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
+                const fcmPayload = {
+                    message: {
+                        token: token,
+                        data: {
+                            title,
+                            body,
+                            key: String(key),
+                            click_action: `/admin.html?key=${key}`
+                        },
+                        webpush: {
+                            fcm_options: { link: `https://${request.headers.get("host")}/admin.html?key=${key}` }
+                        }
+                    }
+                };
+                const fcmResponse = await fetch(fcmUrl, {
+                    method: "POST",
+                    headers: { "Authorization": `Bearer ${accessToken}`, "Content-Type": "application/json" },
+                    body: JSON.stringify(fcmPayload)
+                });
+
+                if (fcmResponse.ok) {
+                    successCount++;
+                } else {
+                    const errBody = await fcmResponse.text();
+                    console.log(`⚠️ FCM send failed for token ${pushId}:`, errBody);
+                    if (fcmResponse.status === 404 || fcmResponse.status === 400) {
+                        invalidPushIds.push(pushId);
+                    }
+                }
+            }
+
+            for (const pushId of invalidPushIds) {
+                await fetch(`https://${projectId}-default-rtdb.firebaseio.com/admin_settings/fcm_tokens/${pushId}.json?access_token=${accessToken}`, { method: "DELETE" });
+            }
+
+            console.log(`✅ Notification sent: ${successCount}/${uniqueEntries.length}`);
+            return new Response(JSON.stringify({ success: true, sent: successCount, total: uniqueEntries.length }), { headers: corsHeaders });
+
+        } catch (error) {
+            console.log("❌ send-notification error:", error.message);
+            return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: corsHeaders });
+        }
+    }
+};
 
 async function getGoogleAuthToken(credentials) {
     try {
