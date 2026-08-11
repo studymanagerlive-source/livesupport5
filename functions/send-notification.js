@@ -1,4 +1,3 @@
-// Cloudflare Pages Function for Firebase Cloud Messaging (FCM) v1
 export async function onRequestPost(context) {
     const { request, env } = context;
 
@@ -21,7 +20,6 @@ export async function onRequestPost(context) {
             return new Response(JSON.stringify({ error: "Missing data" }), { status: 400, headers: corsHeaders });
         }
 
-        // Environment Variable se Firebase credentials nikalna
         if (!env.FIREBASE_SERVICE_ACCOUNT) {
             return new Response(JSON.stringify({ error: "Missing Firebase Credentials in Cloudflare" }), { status: 500, headers: corsHeaders });
         }
@@ -32,14 +30,17 @@ export async function onRequestPost(context) {
         // 1. Get OAuth 2.0 Access Token
         const accessToken = await getGoogleAuthToken(serviceAccount);
 
-        // 2. Fetch FCM Tokens from Firebase Realtime Database
-        const dbUrl = `https://${projectId}-default-rtdb.firebaseio.com/admin_settings/fcm_tokens.json?access_token=${accessToken}`;
-        const dbResponse = await fetch(dbUrl);
+        // 2. Fetch FCM Tokens from Firebase Realtime Database (🚀 FIX: Token sent securely in Headers)
+        const dbUrl = `https://${projectId}-default-rtdb.firebaseio.com/admin_settings/fcm_tokens.json`;
+        const dbResponse = await fetch(dbUrl, {
+            method: "GET",
+            headers: {
+                "Authorization": `Bearer ${accessToken}`,
+                "Content-Type": "application/json"
+            }
+        });
         const tokensObj = await dbResponse.json();
 
-        // 🆕 FIX: agar Firebase se error aaya (permission denied, invalid token, etc)
-        // to usse token maan kar loop mat chalao — seedha error return karo taaki
-        // Cloudflare logs me asli wajah dikhe.
         if (tokensObj && tokensObj.error) {
             return new Response(JSON.stringify({ error: "Firebase DB error: " + JSON.stringify(tokensObj.error) }), { status: 500, headers: corsHeaders });
         }
@@ -57,9 +58,6 @@ export async function onRequestPost(context) {
             const fcmUrl = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
             const notifTitle = type === 'new_session' ? `Student Online (Key: ${key})` : `New Message (Key: ${key})`;
 
-            // 🆕 FIX: "notification" ki jagah "data" payload bhej rahe hain, taaki
-            // firebase-messaging-sw.js ka onBackgroundMessage HAMESHA fire ho
-            // (chahe tab band ho, background ho, ya open ho) — consistent behaviour.
             const fcmPayload = {
                 message: {
                     token: token,
@@ -86,8 +84,6 @@ export async function onRequestPost(context) {
             if (fcmResponse.ok) {
                 successCount++;
             } else {
-                // 🆕 FIX: FCM ne agar reject kiya (jaise invalid/expired token)
-                // to uska reason bhi capture kar lo, taaki logs me dikhe.
                 const errText = await fcmResponse.text();
                 errors.push({ token: token.slice(0, 12) + "...", error: errText });
             }
@@ -106,7 +102,8 @@ async function getGoogleAuthToken(credentials) {
     const now = Math.floor(Date.now() / 1000);
     const claim = {
         iss: credentials.client_email,
-        scope: "https://www.googleapis.com/auth/firebase.messaging https://www.googleapis.com/auth/firebase.database",
+        // 🚀 FIX: Master Scope added to bypass "Unauthorized" errors
+        scope: "https://www.googleapis.com/auth/cloud-platform", 
         aud: "https://oauth2.googleapis.com/token",
         exp: now + 3600,
         iat: now
