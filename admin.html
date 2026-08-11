@@ -174,8 +174,9 @@
 <div id="dashboard">
     <div class="dash-header">
         <h1><i class="fas fa-headset"></i> Support Desk (Admin)</h1>
-        <div style="display:flex; gap:10px;">
+        <div style="display:flex; gap:10px; align-items:center;">
             <button id="installAppBtn" style="display:none; background:#a855f7; color:white; border:none; padding:8px 15px; border-radius:8px; cursor:pointer;"><i class="fas fa-download"></i> Install App</button>
+            <button id="enableNotifBtn" style="background:#25D366; color:white; border:none; padding:8px 15px; border-radius:8px; cursor:pointer;"><i class="fas fa-bell"></i> Enable Notification</button>
             <button id="logoutBtn" style="background:#334155; color:white; border:none; padding:8px 15px; border-radius:8px; cursor:pointer;"><i class="fas fa-sign-out-alt"></i> Logout</button>
         </div>
     </div>
@@ -236,23 +237,14 @@
 </div>
 
 <script type="module">
-    // 🆕 Ye registration object baad me getToken() ko explicitly diya jayega,
-    // taaki Firebase Messaging humare custom-scoped (admin.html) worker ko hi
-    // use kare - warna wo apni marzi se ek default (root-scope) worker khud
-    // register kar leta hai aur token generate hona fail ho jaata hai.
     window.__swRegistration = null;
 
     if ('serviceWorker' in navigator) {
-        // Pehले purana koi bhi service worker jo admin.html se alag scope pe hai
-        // (jaise purana '/' wala broad-scope worker), use hata do - taaki wo student
-        // wale index.html page ko control na kare.
         navigator.serviceWorker.getRegistrations().then((registrations) => {
             registrations.forEach((reg) => {
                 if (!reg.scope.endsWith('/admin.html')) { reg.unregister(); }
             });
         }).then(() => {
-            // Scope ko sirf admin.html tak restrict kiya hai, taaki ye service worker
-            // poori site (index.html samet) control na kare.
             return navigator.serviceWorker.register('./firebase-messaging-sw.js', { scope: './admin.html' });
         }).then((registration) => {
             window.__swRegistration = registration;
@@ -284,9 +276,6 @@
     const messaging = getMessaging(app); 
     const auth = getAuth(app);
 
-    // 🆕 Ye admin ka Firebase Auth email hai — isay secret maanne ki zaroorat nahi,
-    // asli security wala kaam password (Firebase server pe verify hota hai) karta hai.
-    // Firebase Console > Authentication > Users mein isi email se ek user banana.
     const ADMIN_EMAIL = "admin@livesupports-65142.local";
 
     let currentKey = null;
@@ -297,8 +286,6 @@
     let unsubStatus = null;
     let unsubCalls = null;
     let replyingToData = null;
-    // 🆕 Har render pe latest messages yahan cache karte hain, taaki reply/delete
-    // button ke liye raw message text ko HTML/JS attribute mein kabhi daalna hi na pade.
     let lastMsgsCache = {};
 
     let isAppVisible = !document.hidden;
@@ -356,8 +343,6 @@
         try {
             const permission = await Notification.requestPermission();
             if (permission === 'granted') {
-                // 🆕 Agar service worker registration abhi tak ready nahi hui (race condition),
-                // thoda intezaar karo - warna getToken() ko sahi worker nahi milegi.
                 let waitCount = 0;
                 while (!window.__swRegistration && waitCount < 20) {
                     await new Promise(r => setTimeout(r, 200));
@@ -378,6 +363,12 @@
             }
         } catch(err) { console.log('Notification Err:', err); }
     }
+
+    // 🆕 Button Click Event (Fix for Mobile Auto-Popup block)
+    document.getElementById('enableNotifBtn').addEventListener('click', () => {
+        requestNotificationPermission();
+        alert("Permission check triggered. Please 'Allow' if prompted by your browser.");
+    });
 
     let initAlert = true;
     onValue(ref(db, 'admin_alerts/latest'), (snapshot) => {
@@ -494,9 +485,6 @@
 
     async function initiateCall(callType) {
         try {
-            // 🆕 Call shuru karne se pehle hi check kar lo ki koi call pehle se active toh nahi hai
-            // (jaise student ne bhi usi second call kar di ho) — isse camera/mic ka permission
-            // popup bhi bewajah nahi aayega.
             const existingSnap = await get(ref(db, `calls/${currentKey}`));
             const existingData = existingSnap.val();
             if (existingData && existingData.status && existingData.status !== 'ended') {
@@ -537,11 +525,8 @@
                 offer: { type: offerDescription.type, sdp: offerDescription.sdp }
             };
 
-            // 🆕 set() ki jagah runTransaction() — ye Firebase server pe atomically check karta hai
-            // ki write ke exact moment pe bhi koi active call na aa gayi ho (student ne isi second
-            // call ki ho). Aisa hua toh apni call cancel kar do, dono taraf confusion nahi hoga.
             const txResult = await runTransaction(ref(db, `calls/${currentKey}`), (current) => {
-                if (current && current.status && current.status !== 'ended') { return; } // abort, mat overwrite karo
+                if (current && current.status && current.status !== 'ended') { return; } 
                 return callConfig;
             });
 
@@ -614,9 +599,6 @@
 
             await update(ref(db, `calls/${currentKey}`), callConfig);
 
-            // 🆕 FIX: Receiver (jo call accept kar raha hai) ka UI turant update karo,
-            // isse pehle iska koi code nahi tha isliye "Connecting..." atka reh jaata tha
-            // aur mute/video/speaker buttons kabhi show nahi hote the.
             document.getElementById("callStatusText").innerText = isVideoCall ? "" : "In Call (Live)";
             document.getElementById("muteCallBtn").style.display = "inline-block";
             document.getElementById("speakerCallBtn").style.display = "inline-block";
@@ -669,11 +651,10 @@
     }
 
     document.getElementById("endCallBtn").addEventListener("click", () => {
-        if(currentKey) remove(ref(db, `calls/${currentKey}`)); // Instant wipe from network
+        if(currentKey) remove(ref(db, `calls/${currentKey}`)); 
         endCallLocal();
     });
 
-    // 🆕 REMOVED CHAT CLOSURE FROM END CALL
     function endCallLocal() {
         document.getElementById("callOverlay").style.display = "none";
         document.getElementById("muteCallBtn").style.display = "none";
@@ -729,8 +710,7 @@
     const emojis = ["😀","😃","😄","😁","😆","😅","😂","🤣","😊","😇","🙂","🙃","😉","😌","😍","🥰","😘","😋","😛","😝","😜","🤪","🤓","😎","🤩","🥳","😏","😒","😞","😔","😟","😕","🙁","☹️","😣","😖","😫","😩","🥺","😢","😭","😤","😠","😡","🤯","😳","😱","😨","😰","😥","😓","🤗","🤔","🤭","🤫","😶","😐","😑","😬","🙄","😯","😦","😧","😮","😲","🥱","😴","🤤","😪","😵","🤐","🥴","🤢","🤮","🤧","😷","🤒","🤕","🤑","🤠","😈","👿","👻","💀","👽","👾","🤖","🎃","👍","👎","👏","🙌","👐","🤲","🤝","🙏","✌️","🤞","👆","👇","👈","👉","🔥","💯","❤️","💔"];
     const emojiPicker = document.getElementById("adminEmojiPicker");
     const msgInput = document.getElementById("adminMsgInput");
-    // 🆕 Emoji picker par tap/click karte hi input se focus na hate (jisse mobile keyboard
-    // band-khul-band "hilta" tha) — mousedown pe hi default browser-behavior rok dete hain.
+    
     emojiPicker.addEventListener("mousedown", (e) => { e.preventDefault(); });
     emojis.forEach(e => {
         let span = document.createElement("span"); span.innerText = e;
@@ -795,8 +775,6 @@
         const btn = document.getElementById("adminLoginBtn");
         btn.disabled = true; btn.innerText = "Checking...";
 
-        // 🆕 Password ab Firebase ke server pe verify hota hai, client-side string
-        // compare nahi — koi bhi page source dekh ke login nahi kar sakta.
         signInWithEmailAndPassword(auth, ADMIN_EMAIL, pass)
             .catch(() => {
                 document.getElementById("loginErrorMsg").style.display = "block";
@@ -806,8 +784,6 @@
             });
     }
 
-    // 🆕 Firebase khud batata hai ki login valid hai ya nahi — isi se dashboard khulta/band hota hai.
-    // Ye page refresh hone par bhi session ko sahi tarike se restore/check karta hai.
     onAuthStateChanged(auth, (user) => {
         if (user) {
             document.getElementById("loginScreen").style.display = "none";
@@ -918,7 +894,6 @@
             const data = snapshot.val();
             let overlayVisible = document.getElementById("callOverlay").style.display === "flex";
 
-            // If call is rejected, ended, or node deleted -> Cleanup UI instantly
             if(!data || data.status === 'ended') { 
                 if(overlayVisible) { endCallLocal(); }
                 return; 
@@ -989,8 +964,7 @@
                         else { contentHtml += `<div style="margin-top:2px;"><a href="${safeUrl}" target="_blank" style="color:#34b7f1; text-decoration:underline; font-weight:bold;"><i class="fas fa-file"></i> Open File</a></div>`; }
                     }
                     contentHtml += textContent;
-                    // 🆕 Ab onclick mein sirf msgId jaata hai (Firebase key hamesha safe chars ki hoti hai) —
-                    // raw message text kabhi bhi HTML/JS attribute mein interpolate nahi hota.
+                    
                     let actionsHtml = `<div class="msg-controls"><i class="fas fa-reply msg-btn reply" onclick="window.setReply('${msgId}')"></i><i class="fas fa-trash msg-btn delete" onclick="window.deleteMessage('${msgId}')"></i></div>`;
                     newHtmlString += `<div class="msg ${isAdmin ? 'msg-admin' : 'msg-student'}">${contentHtml}<span class="msg-time">${actionsHtml} ${time} ${tickHtml}</span></div>`;
                 });
