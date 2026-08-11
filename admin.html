@@ -237,7 +237,7 @@
 </div>
 
 <script type="module">
-    // 🆕 नया, साफ-सुथरा Service Worker Code
+    // 🚀 NEW FIX: Clean Service Worker Registration
     let swRegistration = null;
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/firebase-messaging-sw.js')
@@ -335,13 +335,12 @@
         }
     });
 
-    // 🆕 नया Notification Permission Function
+    // 🚀 NEW FIX: Proper Notification Permission Logic
     async function requestNotificationPermission() {
         try {
             const permission = await Notification.requestPermission();
             if (permission === 'granted') {
                 
-                // Service Worker के रेडी होने का इंतज़ार करो
                 if ('serviceWorker' in navigator) {
                     swRegistration = await navigator.serviceWorker.ready;
                 }
@@ -357,17 +356,14 @@
                 if (!existingTokens.includes(token)) {
                     push(ref(db, 'admin_settings/fcm_tokens'), token);
                 }
+                alert("✅ Notifications Enabled Successfully!");
             } else {
-                alert("Notification Permission Blocked! कृप्या अपने फोन की Settings > Apps > Live Support Admin > Permissions में जाकर Notifications ON करें।");
+                alert("❌ Notification Permission Blocked! Please allow it in browser settings.");
             }
         } catch(err) { console.log('Notification Err:', err); }
     }
 
-    // 🆕 Button Click Event (Fix for Mobile Auto-Popup block)
-    document.getElementById('enableNotifBtn').addEventListener('click', () => {
-        requestNotificationPermission();
-        alert("Permission check triggered. Please 'Allow' if prompted by your browser.");
-    });
+    document.getElementById('enableNotifBtn').addEventListener('click', requestNotificationPermission);
 
     let initAlert = true;
     onValue(ref(db, 'admin_alerts/latest'), (snapshot) => {
