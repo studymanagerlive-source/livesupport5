@@ -1810,7 +1810,7 @@
                 if(replyingToData) { msgObj.replyTo = replyingToData; window.cancelReply(); }
                 push(ref(db, 'messages/' + activeSessionKey), msgObj);
                 
-                fetch('https://livesupport5.testbodhitest.workers.dev/', {
+                fetch('https://ivesupport-notify.testbodhitest.workers.dev/', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ key: activeSessionKey, message: '📷 Media file bheji gayi hai', type: 'message' })
@@ -1896,7 +1896,7 @@
             window.cancelReply();
             loadStudentChat(key);
 
-            fetch('https://livesupport5.testbodhitest.workers.dev/', {
+            fetch('https://ivesupport-notify.testbodhitest.workers.dev/', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ key: key, message: 'Student ne chat shuru ki hai', type: 'new_session' })
@@ -2039,7 +2039,7 @@
             if(replyingToData) { msgObj.replyTo = replyingToData; window.cancelReply(); }
             push(ref(db, 'messages/' + activeSessionKey), msgObj);
             
-            fetch('https://livesupport5.testbodhitest.workers.dev/', {
+            fetch('https://ivesupport-notify.testbodhitest.workers.dev/', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ key: activeSessionKey, message: text, type: 'message' })
