@@ -37,22 +37,36 @@ export async function onRequestPost(context) {
         const dbResponse = await fetch(dbUrl);
         const tokensObj = await dbResponse.json();
 
+        // 🆕 FIX: agar Firebase se error aaya (permission denied, invalid token, etc)
+        // to usse token maan kar loop mat chalao — seedha error return karo taaki
+        // Cloudflare logs me asli wajah dikhe.
+        if (tokensObj && tokensObj.error) {
+            return new Response(JSON.stringify({ error: "Firebase DB error: " + JSON.stringify(tokensObj.error) }), { status: 500, headers: corsHeaders });
+        }
+
         if (!tokensObj) {
             return new Response(JSON.stringify({ success: true, message: "No tokens found" }), { headers: corsHeaders });
         }
 
         const tokens = Object.values(tokensObj);
         let successCount = 0;
+        let errors = [];
 
         // 3. Send Notification to all tokens
         for (const token of tokens) {
             const fcmUrl = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
+            const notifTitle = type === 'new_session' ? `Student Online (Key: ${key})` : `New Message (Key: ${key})`;
+
+            // 🆕 FIX: "notification" ki jagah "data" payload bhej rahe hain, taaki
+            // firebase-messaging-sw.js ka onBackgroundMessage HAMESHA fire ho
+            // (chahe tab band ho, background ho, ya open ho) — consistent behaviour.
             const fcmPayload = {
                 message: {
                     token: token,
-                    notification: {
-                        title: type === 'new_session' ? `Student Online (Key: ${key})` : `New Message (Key: ${key})`,
-                        body: message
+                    data: {
+                        title: notifTitle,
+                        body: message,
+                        key: key
                     },
                     webpush: {
                         fcm_options: { link: `https://${request.headers.get("host")}/admin.html?key=${key}` }
@@ -69,10 +83,17 @@ export async function onRequestPost(context) {
                 body: JSON.stringify(fcmPayload)
             });
 
-            if (fcmResponse.ok) successCount++;
+            if (fcmResponse.ok) {
+                successCount++;
+            } else {
+                // 🆕 FIX: FCM ne agar reject kiya (jaise invalid/expired token)
+                // to uska reason bhi capture kar lo, taaki logs me dikhe.
+                const errText = await fcmResponse.text();
+                errors.push({ token: token.slice(0, 12) + "...", error: errText });
+            }
         }
 
-        return new Response(JSON.stringify({ success: true, sent: successCount }), { headers: corsHeaders });
+        return new Response(JSON.stringify({ success: true, sent: successCount, total: tokens.length, errors }), { headers: corsHeaders });
 
     } catch (error) {
         return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: corsHeaders });
@@ -124,5 +145,8 @@ async function getGoogleAuthToken(credentials) {
     });
 
     const data = await response.json();
+    if (!data.access_token) {
+        throw new Error("Google auth failed: " + JSON.stringify(data));
+    }
     return data.access_token;
 }
