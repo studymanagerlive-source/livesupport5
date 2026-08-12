@@ -53,9 +53,14 @@ export async function onRequestPost(context) {
         let errors = [];
 
         // 3. Send Notification to all tokens
+        // 🆕 FIX: Actual chat message content ab notification me nahi dikhega —
+        // sirf generic text dikhega, taaki student ki privacy bani rahe aur
+        // notification bar me kisi ko chat ka content na dikhe.
+        const notifTitle = type === 'new_session' ? 'Student Online' : 'New Update';
+        const notifBody = type === 'new_session' ? `Key ${key} is live now` : `Key ${key} has a new update`;
+
         for (const token of tokens) {
             const fcmUrl = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
-            const notifTitle = type === 'new_session' ? `Student Online (Key: ${key})` : `New Message (Key: ${key})`;
 
             // 🆕 FIX: "notification" ki jagah "data" payload bhej rahe hain, taaki
             // firebase-messaging-sw.js ka onBackgroundMessage HAMESHA fire ho
@@ -65,7 +70,7 @@ export async function onRequestPost(context) {
                     token: token,
                     data: {
                         title: notifTitle,
-                        body: message,
+                        body: notifBody,
                         key: key
                     },
                     webpush: {
